@@ -1,0 +1,14 @@
+
+PlatformIO tests for the rover project should live here.
+
+Current status:
+
+- no automated tests yet
+- firmware is being validated on real ESP32-S3 hardware during bring-up
+
+Good first test targets later:
+
+- command parsing and validation
+- Wi-Fi provisioning state handling
+- future motor command mapping
+- future ultrasonic sensor filtering logic

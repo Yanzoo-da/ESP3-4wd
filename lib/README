@@ -1,0 +1,9 @@
+
+Private rover libraries should go in this directory once the project is split into modules.
+
+Likely future candidates:
+
+- motor driver wrapper for the two `L298` boards
+- ultrasonic sensor helpers
+- power/status helpers
+- shared rover command logic

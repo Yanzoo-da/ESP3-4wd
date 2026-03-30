@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ESP32 Rover Remote Control</title>
+  <link rel="stylesheet" href="./styles.css">
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <div class="hero-top">
+        <div>
+          <div class="eyebrow">Cloud Rover Control</div>
+          <h1>ESP32-S3 4WD Remote</h1>
+          <p>Use this page from GitHub Pages after the rover and your phone are connected to the same MQTT cloud broker.</p>
+        </div>
+        <div class="car-mark"><div class="car-body"></div></div>
+      </div>
+      <div id="feedback" class="feedback"></div>
+      <div class="chip-row">
+        <div class="chip" id="brokerChip">Broker: disconnected</div>
+        <div class="chip" id="roverChip">Rover: unknown</div>
+        <div class="chip" id="driveChip">Drive: stop</div>
+        <div class="chip" id="speedChip">Speed: 180</div>
+      </div>
+      <div class="telemetry">
+        <div class="tile" id="networkTile">MQTT host -- | topic --</div>
+        <div class="tile" id="sensorTile">Front -- cm | Left -- cm | Right -- cm</div>
+        <div class="tile" id="messageTile">Waiting for broker connection...</div>
+        <div class="tile" id="hintTile">The page stores non-secret broker settings in this browser local storage. Enter the broker password when you connect, and do not publish real credentials inside the site source.</div>
+      </div>
+    </section>
+
+    <section>
+      <h2>MQTT Broker</h2>
+      <div class="split">
+        <input id="host" type="text" placeholder="Broker host">
+        <input id="topic" type="text" placeholder="Topic base, for example rover/abcd1234">
+      </div>
+      <div class="split top-gap">
+        <input id="wsPort" type="number" min="1" max="65535" placeholder="WebSocket port, usually 8884">
+        <input id="wsPath" type="text" placeholder="/mqtt">
+      </div>
+      <div class="split top-gap">
+        <input id="username" type="text" placeholder="MQTT username">
+        <input id="password" type="password" placeholder="MQTT password">
+      </div>
+      <div class="row top-gap">
+        <button id="connectBtn" type="button">Connect Broker</button>
+        <button id="disconnectBtn" type="button" class="gray">Disconnect</button>
+        <button id="refreshBtn" type="button" class="gray">Refresh Rover Status</button>
+      </div>
+    </section>
+
+    <section>
+      <h2>Drive Console</h2>
+      <div class="speed-row">
+        <span>Speed</span>
+        <input id="speed" type="range" min="90" max="255" value="180">
+        <span id="speedValue">180</span>
+      </div>
+      <div class="toggle-row">
+        <button id="showButtons" type="button" class="active">Buttons</button>
+        <button id="showJoystick" type="button" class="gray">Joystick</button>
+      </div>
+      <div id="buttonsPanel" class="control-shell">
+        <div class="grid">
+          <button id="forwardLeft" type="button">Forward + Left</button>
+          <button id="forward" type="button">Forward</button>
+          <button id="forwardRight" type="button">Forward + Right</button>
+          <button id="left" type="button">Left</button>
+          <button id="stop" type="button" class="stop">Stop</button>
+          <button id="right" type="button">Right</button>
+          <div></div>
+          <button id="reverse" type="button">Reverse</button>
+          <div></div>
+        </div>
+        <small>Hold a direction button to keep publishing drive commands. Release to stop.</small>
+      </div>
+      <div id="joystickPanel" class="control-shell hidden">
+        <div class="joystick-wrap">
+          <div id="joystick" class="joystick">
+            <div id="stick" class="stick"></div>
+          </div>
+        </div>
+        <small>Drag the joystick in any direction. Release to stop.</small>
+      </div>
+    </section>
+
+    <section>
+      <h2>Auto Drive</h2>
+      <div class="row">
+        <button id="autoBtn" type="button">Start Auto Avoid</button>
+        <button id="manualBtn" type="button" class="gray">Manual Mode</button>
+        <button id="stopAutoBtn" type="button" class="gray">Stop Auto</button>
+      </div>
+    </section>
+
+    <details>
+      <summary>RGB Lights And Effects</summary>
+      <div class="row top-gap">
+        <select id="ledColor">
+          <option value="green">Green</option>
+          <option value="red">Red</option>
+          <option value="white">White</option>
+          <option value="blue">Blue</option>
+          <option value="purple">Purple</option>
+          <option value="black">Off</option>
+        </select>
+        <button id="applyLed" type="button">Apply Color</button>
+      </div>
+      <div class="row top-gap">
+        <button id="policeBtn" type="button">Police Move</button>
+        <button id="staticBtn" type="button" class="gray">Static</button>
+      </div>
+    </details>
+  </main>
+
+  <script src="https://unpkg.com/mqtt/dist/mqtt.min.js"></script>
+  <script src="./app.js"></script>
+</body>
+</html>

@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>ESP32 Rover Docs</title>
+  <style>
+    :root{color-scheme:dark;--bg:#090b0f;--panel:#181016;--edge:#5d2027;--text:#fff2f2;--muted:#f0b8b8;--accent:#ff463d;--accentDark:#b81617}
+    *{box-sizing:border-box}
+    body{margin:0;padding:24px;font-family:'Trebuchet MS',Verdana,sans-serif;background:radial-gradient(circle at top,#4b1319 0,#18070b 36%,#07090d 100%);color:var(--text)}
+    main{max-width:980px;margin:0 auto}
+    h1{margin:0 0 8px}
+    p{color:var(--muted)}
+    .grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:16px;margin-top:24px}
+    .card{background:linear-gradient(180deg,rgba(29,13,17,.96),rgba(13,10,11,.98));border:1px solid var(--edge);border-radius:18px;padding:18px;box-shadow:0 18px 40px rgba(0,0,0,.28)}
+    .card h2{margin:0 0 10px}
+    .card p{min-height:72px}
+    a.button{display:inline-block;text-decoration:none;color:#fff;padding:12px 16px;border-radius:12px;background:linear-gradient(180deg,var(--accent),var(--accentDark));box-shadow:0 10px 22px rgba(255,70,61,.22)}
+    ul{padding-left:18px;color:var(--muted)}
+  </style>
+</head>
+<body>
+  <main>
+    <h1>ESP32-S3 Rover Workspace</h1>
+    <p>This docs folder now includes the static internet remote-control app and the project notes that can be published with GitHub Pages.</p>
+
+    <div class="grid">
+      <section class="card">
+        <h2>Remote Control App</h2>
+        <p>Phone-friendly cloud MQTT control page for driving the rover from anywhere after the ESP and the browser are connected to the same MQTT broker.</p>
+        <a class="button" href="./remote-control/">Open Remote App</a>
+      </section>
+
+      <section class="card">
+        <h2>Broker Setup Notes</h2>
+        <p>Step-by-step guide for preparing a free MQTT cloud broker and matching it with the ESP local setup page and the GitHub Pages app.</p>
+        <a class="button" href="./remote-mqtt-setup.md">Open Setup Guide</a>
+      </section>
+
+      <section class="card">
+        <h2>Project Docs</h2>
+        <ul>
+          <li><a href="./bom.md">Parts BOM</a></li>
+          <li><a href="./hardware-plan.md">Hardware Plan</a></li>
+          <li><a href="./git-terminal-setup.md">Git Terminal Setup</a></li>
+        </ul>
+      </section>
+    </div>
+  </main>
+</body>
+</html>

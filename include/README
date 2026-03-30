@@ -1,0 +1,4 @@
+
+Shared headers for the rover firmware should go in this directory.
+
+The current project still lives in a single `src/main.cpp` file because the firmware is in its prototype stage. As motor control, sensor drivers, and shared config types are added, move the public declarations here.
