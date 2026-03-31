@@ -72,6 +72,7 @@ The current code should be treated as the communication and UI foundation, not t
 - The purchased parts are documented in [docs/bom.md](docs/bom.md).
 - The subsystem plan and integration notes are documented in [docs/hardware-plan.md](docs/hardware-plan.md).
 - Cloud MQTT and GitHub Pages setup notes are documented in [docs/remote-mqtt-setup.md](docs/remote-mqtt-setup.md).
+- A step-by-step illustrated usage manual PDF is available at [docs/ESP32-S3-4WD-Rover-User-Manual.pdf](docs/ESP32-S3-4WD-Rover-User-Manual.pdf).
 - Some purchased items are workshop tools or general spares and are not part of the final rover electronics.
 - The project now includes a local custom PlatformIO board definition in [boards/esp32-s3-n16r8.json](boards/esp32-s3-n16r8.json) so the repo matches your `ESP32-S3-N16R8` memory layout.
 

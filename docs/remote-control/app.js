@@ -36,6 +36,13 @@ const els = {
 };
 
 const settingsKey = 'esp32-rover-remote-settings';
+const defaultSettings = {
+  host: '8038be31051d4e368ce62a5753aaf95d.s1.eu.hivemq.cloud',
+  topic: 'rover/yanzoo-car-1',
+  wsPort: '8884',
+  wsPath: '/mqtt',
+  username: 'Yanzoo4wd'
+};
 
 const state = {
   client: null,
@@ -87,21 +94,26 @@ function saveSettings() {
 function loadSettings() {
   try {
     const raw = localStorage.getItem(settingsKey);
-    if (!raw) {
-      els.wsPort.value = '8884';
-      els.wsPath.value = '/mqtt';
-      return;
-    }
+    const payload = raw ? JSON.parse(raw) : {};
+    const merged = {
+      ...defaultSettings,
+      ...payload
+    };
 
-    const payload = JSON.parse(raw);
-    els.host.value = payload.host || '';
-    els.topic.value = payload.topic || '';
-    els.wsPort.value = payload.wsPort || '8884';
-    els.wsPath.value = payload.wsPath || '/mqtt';
-    els.username.value = payload.username || '';
+    els.host.value = merged.host || '';
+    els.topic.value = merged.topic || '';
+    els.wsPort.value = merged.wsPort || defaultSettings.wsPort;
+    els.wsPath.value = merged.wsPath || defaultSettings.wsPath;
+    els.username.value = merged.username || '';
     els.password.value = '';
   } catch (error) {
     console.error(error);
+    els.host.value = defaultSettings.host;
+    els.topic.value = defaultSettings.topic;
+    els.wsPort.value = defaultSettings.wsPort;
+    els.wsPath.value = defaultSettings.wsPath;
+    els.username.value = defaultSettings.username;
+    els.password.value = '';
   }
 }
 
@@ -394,7 +406,9 @@ function bindUi() {
   bindHold('forwardRight', 'forward-right');
   bindHold('left', 'left');
   bindHold('right', 'right');
+  bindHold('reverseLeft', 'reverse-left');
   bindHold('reverse', 'reverse');
+  bindHold('reverseRight', 'reverse-right');
 
   els.joystick.addEventListener('pointerdown', startJoystick);
   els.joystick.addEventListener('pointermove', moveJoystick);
@@ -411,4 +425,4 @@ loadSettings();
 bindUi();
 setDriveUi('buttons');
 resetStick();
-feedback('Enter your broker details, connect, then control the rover from anywhere.');
+feedback('Project broker defaults are prefilled. Enter only the password, then connect.');

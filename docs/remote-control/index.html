@@ -28,7 +28,7 @@
         <div class="tile" id="networkTile">MQTT host -- | topic --</div>
         <div class="tile" id="sensorTile">Front -- cm | Left -- cm | Right -- cm</div>
         <div class="tile" id="messageTile">Waiting for broker connection...</div>
-        <div class="tile" id="hintTile">The page stores non-secret broker settings in this browser local storage. Enter the broker password when you connect, and do not publish real credentials inside the site source.</div>
+        <div class="tile" id="hintTile">Project broker defaults are prefilled in this page. Enter the broker password when you connect, and do not publish real credentials inside the site source.</div>
       </div>
     </section>
 
@@ -51,6 +51,7 @@
         <button id="disconnectBtn" type="button" class="gray">Disconnect</button>
         <button id="refreshBtn" type="button" class="gray">Refresh Rover Status</button>
       </div>
+      <small>Host, topic base, username, and WebSocket settings are prefilled for this project. Only the broker password stays manual.</small>
     </section>
 
     <section>
@@ -65,18 +66,22 @@
         <button id="showJoystick" type="button" class="gray">Joystick</button>
       </div>
       <div id="buttonsPanel" class="control-shell">
-        <div class="grid">
-          <button id="forwardLeft" type="button">Forward + Left</button>
-          <button id="forward" type="button">Forward</button>
-          <button id="forwardRight" type="button">Forward + Right</button>
-          <button id="left" type="button">Left</button>
-          <button id="stop" type="button" class="stop">Stop</button>
-          <button id="right" type="button">Right</button>
-          <div></div>
-          <button id="reverse" type="button">Reverse</button>
-          <div></div>
+        <div class="dpad-shell">
+          <div class="dpad-stage">
+            <div class="dpad-grid">
+              <button id="forwardLeft" type="button" class="dpad-btn" title="Forward left" aria-label="Forward left">&#8598;</button>
+              <button id="forward" type="button" class="dpad-btn" title="Forward" aria-label="Forward">&#8593;</button>
+              <button id="forwardRight" type="button" class="dpad-btn" title="Forward right" aria-label="Forward right">&#8599;</button>
+              <button id="left" type="button" class="dpad-btn" title="Left" aria-label="Left">&#8592;</button>
+              <button id="stop" type="button" class="dpad-btn stop" title="Stop" aria-label="Stop">&#9679;</button>
+              <button id="right" type="button" class="dpad-btn" title="Right" aria-label="Right">&#8594;</button>
+              <button id="reverseLeft" type="button" class="dpad-btn" title="Reverse left" aria-label="Reverse left">&#8601;</button>
+              <button id="reverse" type="button" class="dpad-btn" title="Reverse" aria-label="Reverse">&#8595;</button>
+              <button id="reverseRight" type="button" class="dpad-btn" title="Reverse right" aria-label="Reverse right">&#8600;</button>
+            </div>
+          </div>
         </div>
-        <small>Hold a direction button to keep publishing drive commands. Release to stop.</small>
+        <small>Hold an arrow to keep publishing drive commands. Release to stop.</small>
       </div>
       <div id="joystickPanel" class="control-shell hidden">
         <div class="joystick-wrap">

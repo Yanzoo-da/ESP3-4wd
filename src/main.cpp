@@ -1260,7 +1260,15 @@ const char* webpage = R"rawliteral(
     .speedRow{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
     .toggleRow{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:12px}
     .toggleRow button{margin:0;width:100%}
-    .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-top:12px}
+    .dpadShell{display:flex;justify-content:center;padding:12px 0 6px}
+    .dpadStage{width:336px;height:336px;border-radius:40%;position:relative;background:radial-gradient(circle at 35% 28%,#48515d 0,#242a32 34%,#0b0d11 74%,#050608 100%);border:1px solid rgba(255,255,255,.08);box-shadow:inset 0 18px 28px rgba(255,255,255,.08),inset 0 -16px 24px rgba(0,0,0,.55),0 24px 46px rgba(0,0,0,.38),0 0 40px rgba(74,190,255,.08);display:flex;align-items:center;justify-content:center;overflow:hidden}
+    .dpadStage::before{content:'';position:absolute;inset:24px;border-radius:38%;border:1px solid rgba(140,226,255,.16);box-shadow:inset 0 0 28px rgba(140,226,255,.08),0 0 22px rgba(140,226,255,.06)}
+    .dpadStage::after{content:'';position:absolute;left:50%;top:50%;width:188px;height:188px;transform:translate(-50%,-50%);border-radius:50%;background:radial-gradient(circle,rgba(120,200,255,.08),rgba(120,200,255,0) 72%)}
+    .dpadGrid{display:grid;grid-template-columns:repeat(3,88px);grid-template-rows:repeat(3,88px);gap:12px;justify-content:center;align-content:center;position:relative;z-index:1}
+    .dpadBtn{border:1px solid rgba(255,255,255,.12);background:linear-gradient(180deg,#3b434f 0,#1a1f26 52%,#0b0d11 100%);color:#eaf7ff;padding:0;min-width:0;width:88px;height:88px;border-radius:30px;font-size:38px;line-height:1;display:flex;align-items:center;justify-content:center;text-shadow:0 0 10px rgba(132,224,255,.28);box-shadow:inset 0 12px 18px rgba(255,255,255,.12),inset 0 -12px 18px rgba(0,0,0,.45),0 12px 20px rgba(0,0,0,.34),0 0 18px rgba(95,212,255,.08)}
+    .dpadBtn.stop{background:radial-gradient(circle at 50% 38%,#ffd0d8 0,#ff7c8d 24%,#ff4f63 42%,#b91832 100%);border-radius:50%;font-size:32px;text-shadow:none;box-shadow:0 0 0 6px rgba(255,255,255,.04),0 0 18px rgba(255,95,130,.35),inset 0 8px 14px rgba(255,255,255,.16),0 14px 24px rgba(255,68,57,.28)}
+    .dpadBtn:hover{box-shadow:inset 0 12px 18px rgba(255,255,255,.12),inset 0 -12px 18px rgba(0,0,0,.45),0 12px 20px rgba(0,0,0,.34),0 0 24px rgba(95,212,255,.18)}
+    .dpadBtn:active{transform:translateY(1px);box-shadow:inset 0 6px 14px rgba(0,0,0,.32),0 6px 12px rgba(0,0,0,.22),0 0 12px rgba(95,212,255,.12)}
     .split{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
     .checkRow{display:flex;align-items:center;gap:10px}
     .checkRow input{width:auto}
@@ -1277,7 +1285,7 @@ const char* webpage = R"rawliteral(
     details[open] summary{margin-bottom:12px}
     small{color:var(--muted)}
     .okText{color:var(--ok)}
-    @media (max-width:520px){.telemetry{grid-template-columns:1fr}.grid button{min-width:0;padding:12px 8px}.carMark{width:96px;height:60px}}
+    @media (max-width:520px){.telemetry{grid-template-columns:1fr}.dpadStage{width:292px;height:292px}.dpadGrid{grid-template-columns:repeat(3,76px);grid-template-rows:repeat(3,76px)}.dpadBtn{width:76px;height:76px;font-size:32px;border-radius:24px}.carMark{width:96px;height:60px}}
   </style>
 </head>
 <body>
@@ -1319,18 +1327,22 @@ const char* webpage = R"rawliteral(
       <button id=showJoystick type=button class=gray>Joystick</button>
     </div>
     <div id=buttonsPanel class=controlShell>
-      <div class=grid>
-        <button id=forwardLeft type=button>Forward + Left</button>
-        <button id=forward type=button>Forward</button>
-        <button id=forwardRight type=button>Forward + Right</button>
-        <button id=left type=button>Left</button>
-        <button id=stop type=button class=stop>Stop</button>
-        <button id=right type=button>Right</button>
-        <div></div>
-        <button id=reverse type=button>Reverse</button>
-        <div></div>
+      <div class=dpadShell>
+        <div class=dpadStage>
+          <div class=dpadGrid>
+            <button id=forwardLeft type=button class=dpadBtn title="Forward left" aria-label="Forward left">&#8598;</button>
+            <button id=forward type=button class=dpadBtn title="Forward" aria-label="Forward">&#8593;</button>
+            <button id=forwardRight type=button class=dpadBtn title="Forward right" aria-label="Forward right">&#8599;</button>
+            <button id=left type=button class=dpadBtn title="Left" aria-label="Left">&#8592;</button>
+            <button id=stop type=button class="dpadBtn stop" title="Stop" aria-label="Stop">&#9679;</button>
+            <button id=right type=button class=dpadBtn title="Right" aria-label="Right">&#8594;</button>
+            <button id=reverseLeft type=button class=dpadBtn title="Reverse left" aria-label="Reverse left">&#8601;</button>
+            <button id=reverse type=button class=dpadBtn title="Reverse" aria-label="Reverse">&#8595;</button>
+            <button id=reverseRight type=button class=dpadBtn title="Reverse right" aria-label="Reverse right">&#8600;</button>
+          </div>
+        </div>
       </div>
-      <small>Hold a direction button to move. Diagonal buttons act like pressing two directions together.</small>
+      <small>Hold an arrow to move. Diagonal arrows act like pressing two directions together.</small>
     </div>
     <div id=joystickPanel class="controlShell hidden">
       <div id=joystickWrap>
@@ -1739,7 +1751,9 @@ const char* webpage = R"rawliteral(
     bind('forwardRight','forward-right');
     bind('left','left');
     bind('right','right');
+    bind('reverseLeft','reverse-left');
     bind('reverse','reverse');
+    bind('reverseRight','reverse-right');
     setDriveUi('buttons');
     resetStick();
     status();
