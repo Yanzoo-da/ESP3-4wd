@@ -1236,7 +1236,8 @@ const char* webpage = R"rawliteral(
     *{box-sizing:border-box}
     body{margin:0;padding:14px;font-family:'Trebuchet MS',Verdana,sans-serif;color:var(--text);background:radial-gradient(circle at top,#4a1219 0,#18070b 42%,#06070a 100%)}
     section,details{background:linear-gradient(180deg,rgba(29,13,17,.96),rgba(13,10,11,.98));border:1px solid var(--panelEdge);border-radius:18px;padding:14px;margin-bottom:12px;box-shadow:0 18px 40px rgba(0,0,0,.28)}
-    h2,h3{margin:0 0 10px}
+    .shell{max-width:980px;margin:0 auto}
+    h1,h2,h3{margin:0 0 10px}
     .hero{position:relative;overflow:hidden}
     .hero::after{content:'';position:absolute;left:-10%;right:-10%;bottom:-70px;height:170px;background:radial-gradient(circle,rgba(255,68,57,.24),rgba(255,68,57,0) 70%)}
     .dashTop{display:flex;justify-content:space-between;align-items:center;gap:12px;position:relative;z-index:1}
@@ -1245,7 +1246,8 @@ const char* webpage = R"rawliteral(
     .carBody{position:absolute;left:10px;right:10px;bottom:12px;height:32px;border-radius:22px 22px 16px 16px;background:linear-gradient(180deg,#ff7164,#c11618);box-shadow:0 10px 24px rgba(255,68,57,.35)}
     .carBody::before{content:'';position:absolute;left:22px;right:22px;top:-15px;height:18px;border-radius:18px 18px 10px 10px;background:linear-gradient(180deg,#ff8973,#e33328)}
     .carBody::after{content:'';position:absolute;left:14px;right:14px;bottom:6px;height:4px;border-radius:999px;background:rgba(255,255,255,.25)}
-    #feedback{min-height:22px;font-weight:700;margin-top:8px;position:relative;z-index:1}
+    p,small{color:var(--muted)}
+    #feedback,.feedback{min-height:22px;font-weight:700;margin-top:8px;position:relative;z-index:1}
     .chipRow,.row{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
     .chip{display:inline-flex;align-items:center;padding:8px 12px;border-radius:999px;background:rgba(255,68,57,.12);border:1px solid rgba(255,68,57,.28);font-size:13px;position:relative;z-index:1}
     .telemetry{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;position:relative;z-index:1}
@@ -1283,22 +1285,22 @@ const char* webpage = R"rawliteral(
     details summary{cursor:pointer;font-weight:700;list-style:none}
     details summary::-webkit-details-marker{display:none}
     details[open] summary{margin-bottom:12px}
-    small{color:var(--muted)}
     .okText{color:var(--ok)}
     @media (max-width:520px){.telemetry{grid-template-columns:1fr}.dpadStage{width:292px;height:292px}.dpadGrid{grid-template-columns:repeat(3,76px);grid-template-rows:repeat(3,76px)}.dpadBtn{width:76px;height:76px;font-size:32px;border-radius:24px}.carMark{width:96px;height:60px}}
   </style>
 </head>
 <body>
+  <main class=shell>
   <section class=hero>
     <div class=dashTop>
       <div>
-        <div class=eyebrow>Red Car Command HUD</div>
-        <h2>ESP32-S3 4WD Rover</h2>
-        <small class=okText>Router Wi-Fi and ESP hotspot control are both supported.</small>
+        <div class=eyebrow>Local Rover Control</div>
+        <h1>ESP32-S3 4WD Remote</h1>
+        <p>Use this page while your phone is connected to the ESP hotspot or the same Wi-Fi router as the rover. Save Wi-Fi and MQTT here, then use the GitHub Pages remote app from anywhere.</p>
       </div>
       <div class=carMark><div class=carBody></div></div>
     </div>
-    <div id=feedback></div>
+    <div id=feedback class=feedback></div>
     <div class=chipRow>
       <div class=chip id=modeChip>Loading network...</div>
       <div class=chip id=mqttChip>Cloud: disabled</div>
@@ -1307,16 +1309,16 @@ const char* webpage = R"rawliteral(
       <div class=chip id=speedChip>Manual 180 | Auto 150</div>
     </div>
     <div class=telemetry>
-      <div class=tile id=sensorTile>Front -- cm | Left -- cm | Right -- cm</div>
       <div class=tile id=networkTile>Router -- | Hotspot --</div>
-      <div class=tile id=mqttTile>MQTT host -- | topic --</div>
+      <div class=tile id=sensorTile>Front -- cm | Left -- cm | Right -- cm</div>
       <div class=tile id=messageTile>Booting...</div>
-      <div class=tile id=remoteTile>Internet control uses the same ESP server after router port forwarding or VPN.</div>
+      <div class=tile id=remoteTile>Project broker defaults can be saved here first, then reused in the GitHub Pages remote app later.</div>
+      <div class=tile id=mqttTile>MQTT host -- | topic --</div>
     </div>
   </section>
 
   <section>
-    <h3>Drive Console</h3>
+    <h2>Drive Console</h2>
     <div class=speedRow>
       <span>Speed</span>
       <input id=speed type=range min=90 max=255 value=180>
@@ -1355,11 +1357,11 @@ const char* webpage = R"rawliteral(
   </section>
 
   <section>
-    <h3>Auto Drive</h3>
+    <h2>Auto Drive</h2>
     <div class=row>
       <button type=button onclick="startAuto()">Start Auto Avoid</button>
-      <button type=button class=gray onclick="stopAuto()">Stop Auto</button>
       <button type=button class=gray onclick="mode('manual')">Manual Mode</button>
+      <button type=button class=gray onclick="stopAuto()">Stop Auto</button>
     </div>
     <small>Auto mode uses the three ultrasonic sensors to detect obstacles, reverse, and turn away before impact. While auto mode is active, the rover LED is forced red.</small>
   </section>
@@ -1385,7 +1387,7 @@ const char* webpage = R"rawliteral(
   </details>
 
   <section>
-    <h3>Wi-Fi And Hotspot</h3>
+    <h2>Wi-Fi And Hotspot</h2>
     <form id=w>
       <input id=ssid type=text placeholder="Wi-Fi SSID">
       <br><br>
@@ -1399,8 +1401,8 @@ const char* webpage = R"rawliteral(
     <small>If your router Wi-Fi is available, the ESP uses it. If not, the ESP creates its own hotspot so you can still connect your phone directly and control the rover.</small>
   </section>
 
-  <details>
-    <summary>Cloud MQTT Remote Control</summary>
+  <section>
+    <h2>MQTT Broker</h2>
     <form id=mqttForm>
       <div class=checkRow>
         <input id=mqttEnabled type=checkbox checked>
@@ -1427,8 +1429,8 @@ const char* webpage = R"rawliteral(
         <button type=button class=gray onclick="clearMqtt()">Clear Cloud MQTT</button>
       </div>
     </form>
-    <small>Use the TLS TCP port for the ESP32 and the secure WebSocket port/path for the GitHub Pages remote app. The broker password is not shown back on the page after saving.</small>
-  </details>
+    <small>Use the TLS TCP port for the ESP32 and the secure WebSocket port/path for the GitHub Pages remote app. Host, topic base, username, and WebSocket settings can be prefilled here, but the broker password stays manual.</small>
+  </section>
 
   <script>
     let holds={};
@@ -1438,6 +1440,14 @@ const char* webpage = R"rawliteral(
     let joystickCommand='stop';
     let joystickSpeed=0;
     let mqttFormPrimed=false;
+    const mqttDefaults={
+      host:'8038be31051d4e368ce62a5753aaf95d.s1.eu.hivemq.cloud',
+      port:'8883',
+      wsPort:'8884',
+      wsPath:'/mqtt',
+      username:'Yanzoo4wd',
+      topic:'rover/yanzoo-car-1'
+    };
     const joystick=document.getElementById('joystick');
     const stick=document.getElementById('stick');
 
@@ -1484,12 +1494,12 @@ const char* webpage = R"rawliteral(
         if(d.selectedColor) document.getElementById('ledColor').value=d.selectedColor;
         if(!mqttFormPrimed){
           document.getElementById('mqttEnabled').checked=!!d.mqttEnabled;
-          document.getElementById('mqttHost').value=d.mqttHost||'';
-          document.getElementById('mqttPort').value=d.mqttPort||8883;
-          document.getElementById('mqttWsPort').value=d.mqttWsPort||8884;
-          document.getElementById('mqttWsPath').value=d.mqttWsPath||'/mqtt';
-          document.getElementById('mqttUser').value=d.mqttUsername||'';
-          document.getElementById('mqttTopic').value=d.mqttTopic||'';
+          document.getElementById('mqttHost').value=d.mqttHost||mqttDefaults.host;
+          document.getElementById('mqttPort').value=d.mqttPort||mqttDefaults.port;
+          document.getElementById('mqttWsPort').value=d.mqttWsPort||mqttDefaults.wsPort;
+          document.getElementById('mqttWsPath').value=d.mqttWsPath||mqttDefaults.wsPath;
+          document.getElementById('mqttUser').value=d.mqttUsername||mqttDefaults.username;
+          document.getElementById('mqttTopic').value=d.mqttTopic||mqttDefaults.topic;
           mqttFormPrimed=true;
         }
       }catch(error){
@@ -1759,6 +1769,7 @@ const char* webpage = R"rawliteral(
     status();
     setInterval(status,1000);
   </script>
+  </main>
 </body>
 </html>
 )rawliteral";
