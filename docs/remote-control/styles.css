@@ -141,6 +141,34 @@ button{
   padding:12px 14px;
   min-width:88px;
   box-shadow:0 10px 22px rgba(255,68,57,.22);
+  position:relative;
+  overflow:hidden;
+  cursor:pointer;
+  transition:transform .14s ease,filter .14s ease,box-shadow .18s ease;
+}
+
+button::after{
+  content:'';
+  position:absolute;
+  top:-10%;
+  bottom:-10%;
+  left:-42%;
+  width:32%;
+  background:linear-gradient(90deg,rgba(255,255,255,0),rgba(255,255,255,.34),rgba(255,255,255,0));
+  transform:skewX(-22deg) translateX(0);
+  opacity:0;
+  pointer-events:none;
+  transition:transform .28s ease,opacity .18s ease;
+}
+
+button:hover{
+  filter:brightness(1.08) saturate(1.04);
+  transform:translateY(-1px);
+}
+
+button:hover::after{
+  opacity:1;
+  transform:skewX(-22deg) translateX(300%);
 }
 
 button.gray{
@@ -166,6 +194,8 @@ select{
   background:#0d1014;
   color:var(--text);
 }
+
+select,input[type=range],details summary{cursor:pointer}
 
 input[type=range]{
   accent-color:var(--accent);

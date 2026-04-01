@@ -65,6 +65,7 @@ constexpr unsigned long SONAR_TIMEOUT_US = 25000;
 
 const char* AP_SSID = "ESP32-ROVER";
 const char* AP_PASSWORD = "12345678";
+const char* DEFAULT_PROJECT_MQTT_TOPIC = "rover/yanzoo-car-1";
 const char* PREFS_NAMESPACE = "wifi";
 const char* PREFS_SSID_KEY = "ssid";
 const char* PREFS_PASSWORD_KEY = "password";
@@ -333,8 +334,12 @@ String getDeviceSuffix() {
   return suffix;
 }
 
-String getDefaultMqttBaseTopic() {
+String getLegacyDeviceTopic() {
   return "rover/" + getDeviceSuffix();
+}
+
+String getDefaultMqttBaseTopic() {
+  return DEFAULT_PROJECT_MQTT_TOPIC;
 }
 
 String readStoredString(const char* key, const String& defaultValue = "") {
@@ -362,7 +367,10 @@ void loadMqttConfig() {
   mqttConfig.port = static_cast<uint16_t>(preferences.getUInt(PREFS_MQTT_PORT_KEY, DEFAULT_MQTT_TLS_PORT));
   mqttConfig.username = readStoredString(PREFS_MQTT_USER_KEY, "");
   mqttConfig.password = readStoredString(PREFS_MQTT_PASSWORD_KEY, "");
-  mqttConfig.baseTopic = trimSlashes(readStoredString(PREFS_MQTT_TOPIC_KEY, getDefaultMqttBaseTopic()));
+  mqttConfig.baseTopic = trimSlashes(readStoredString(PREFS_MQTT_TOPIC_KEY, ""));
+  if (mqttConfig.baseTopic.length() == 0 || mqttConfig.baseTopic == trimSlashes(getLegacyDeviceTopic())) {
+    mqttConfig.baseTopic = trimSlashes(getDefaultMqttBaseTopic());
+  }
   mqttConfig.wsPort = static_cast<uint16_t>(preferences.getUInt(PREFS_MQTT_WS_PORT_KEY, DEFAULT_MQTT_WS_PORT));
   mqttConfig.wsPath = readStoredString(PREFS_MQTT_WS_PATH_KEY, DEFAULT_MQTT_WS_PATH);
 
@@ -1304,11 +1312,15 @@ const char* webpage = R"rawliteral(
     .telemetry{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px;position:relative;z-index:1}
     .tile{padding:11px 12px;border-radius:14px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.06);min-height:54px}
     button,input,select{font-size:15px;border-radius:12px}
-    button{border:0;background:linear-gradient(180deg,var(--accent),var(--accentDark));color:#fff;padding:12px 14px;min-width:88px;box-shadow:0 10px 22px rgba(255,68,57,.22)}
+    button{border:0;background:linear-gradient(180deg,var(--accent),var(--accentDark));color:#fff;padding:12px 14px;min-width:88px;box-shadow:0 10px 22px rgba(255,68,57,.22);position:relative;overflow:hidden;cursor:pointer;transition:transform .14s ease,filter .14s ease,box-shadow .18s ease}
+    button::after{content:'';position:absolute;top:-10%;bottom:-10%;left:-42%;width:32%;background:linear-gradient(90deg,rgba(255,255,255,0),rgba(255,255,255,.34),rgba(255,255,255,0));transform:skewX(-22deg) translateX(0);opacity:0;pointer-events:none;transition:transform .28s ease,opacity .18s ease}
+    button:hover{filter:brightness(1.08) saturate(1.04);transform:translateY(-1px)}
+    button:hover::after{opacity:1;transform:skewX(-22deg) translateX(300%)}
     button.gray{background:linear-gradient(180deg,#5f6a75,#323841)}
     button.stop{background:linear-gradient(180deg,#ff5d72,#bf1e34)}
     button.active{outline:2px solid rgba(255,255,255,.28);box-shadow:0 0 0 2px rgba(255,68,57,.18),0 12px 24px rgba(255,68,57,.28)}
     input[type=text],input[type=password],input[type=number],select{width:100%;padding:12px 14px;border:1px solid #5c252c;background:#0d1014;color:var(--text)}
+    select,input[type=range],details summary{cursor:pointer}
     input[type=range]{accent-color:var(--accent);flex:1;min-width:150px}
     .speedRow{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
     .toggleRow{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:12px}
