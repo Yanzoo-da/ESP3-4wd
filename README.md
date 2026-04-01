@@ -73,8 +73,9 @@ The current code should be treated as the communication and UI foundation, not t
 - The subsystem plan and integration notes are documented in [docs/hardware-plan.md](docs/hardware-plan.md).
 - The current pin map and recommended power flow are documented in [docs/wiring-reference.md](docs/wiring-reference.md).
 - A step-by-step physical connection guide is documented in [docs/parts-connection-guide.md](docs/parts-connection-guide.md).
+- A one-page assembly order reference is documented in [docs/assembly-order-checklist.md](docs/assembly-order-checklist.md).
 - Cloud MQTT and GitHub Pages setup notes are documented in [docs/remote-mqtt-setup.md](docs/remote-mqtt-setup.md).
-- A step-by-step illustrated usage manual PDF, including pinout and power-flow diagrams, is available at [docs/ESP32-S3-4WD-Rover-User-Manual.pdf](docs/ESP32-S3-4WD-Rover-User-Manual.pdf).
+- A consolidated illustrated PDF manual, including setup, build order, pinout, connection reference, and the wiring/power/sensor diagrams, is available at [docs/ESP32-S3-4WD-Rover-User-Manual.pdf](docs/ESP32-S3-4WD-Rover-User-Manual.pdf).
 - Some purchased items are workshop tools or general spares and are not part of the final rover electronics.
 - The project now includes a local custom PlatformIO board definition in [boards/esp32-s3-n16r8.json](boards/esp32-s3-n16r8.json) so the repo matches your `ESP32-S3-N16R8` memory layout.
 

@@ -3,6 +3,9 @@ from PIL import Image, ImageDraw, ImageFont
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT_PATH = ROOT / "docs" / "ESP32-S3-4WD-Rover-User-Manual.pdf"
+WIRING_DIAGRAM_PATH = ROOT / "docs" / "esp32-rover-wiring-diagram.png"
+POWER_FLOW_IMAGE_PATH = ROOT / "docs" / "esp32-rover-power-flow-diagram.png"
+SENSOR_PLACEMENT_IMAGE_PATH = ROOT / "docs" / "esp32-rover-sensor-placement.png"
 
 PAGE_W = 1240
 PAGE_H = 1754
@@ -49,6 +52,11 @@ TITLE_FONT = load_font(40, bold=True)
 SUBTITLE_FONT = load_font(24, bold=True)
 TEXT_FONT = load_font(22)
 SMALL_FONT = load_font(17)
+
+try:
+    RESAMPLE_LANCZOS = Image.Resampling.LANCZOS
+except AttributeError:
+    RESAMPLE_LANCZOS = Image.LANCZOS
 
 
 def wrap_text(draw: ImageDraw.ImageDraw, text: str, font, width: int):
@@ -138,6 +146,20 @@ def info_bar(draw, x, y, w, title, value, fill=PALE, outline=RED):
     draw.rounded_rectangle((x, y, x + w, y + 80), radius=20, fill=fill, outline=outline, width=2)
     draw.text((x + 18, y + 10), title, font=SMALL_FONT, fill=MID)
     draw.text((x + 18, y + 38), value, font=TEXT_FONT, fill=DARK)
+
+
+def paste_scaled_image(page, image_path: Path, box):
+    image = Image.open(image_path).convert("RGB")
+    x1, y1, x2, y2 = box
+    max_w = x2 - x1
+    max_h = y2 - y1
+    scale = min(max_w / image.width, max_h / image.height)
+    new_w = max(1, int(image.width * scale))
+    new_h = max(1, int(image.height * scale))
+    resized = image.resize((new_w, new_h), RESAMPLE_LANCZOS)
+    paste_x = x1 + (max_w - new_w) // 2
+    paste_y = y1 + (max_h - new_h) // 2
+    page.paste(resized, (paste_x, paste_y))
 
 
 def cover_page():
@@ -662,6 +684,104 @@ def power_flow_page():
     return image
 
 
+def assembly_checklist_page():
+    image = Image.new("RGB", (PAGE_W, PAGE_H), LIGHT)
+    draw = ImageDraw.Draw(image)
+    header(draw, "Assembly Order Checklist", "A compact build order so you can wire the real rover without losing your place")
+
+    section_box(draw, 80, 210, 500, 1260, "Build In This Order")
+    numbered_list(draw, 115, 290, 430, [
+        "ESP32 only over USB-C. Confirm hotspot, local page, Wi-Fi save, and MQTT cloud first.",
+        "Set the main XL4015 buck to exactly 5.0V with the multimeter before it touches the ESP or sensors.",
+        "Build the battery path: 3-cell holder to 3S BMS to 10A fuse to main switch.",
+        "Create the shared ground network between BMS output, ESP32, both L298 modules, and all sensors.",
+        "Connect the 5V logic rail from the XL4015 to the ESP32 and sensor VCC lines.",
+        "Wire the left L298 first, then one left motor, and verify direction control with the wheels lifted.",
+        "Wire the right L298, then the right motors, and retest manual controls.",
+        "Add the front ultrasonic sensor with its ECHO divider first, then left and right sensors.",
+        "Only after all of that should you test Auto Avoid on the floor."
+    ])
+
+    section_box(draw, 650, 210, 500, 600, "Parts To Use In Each Stage")
+    bullet_list(draw, 685, 290, 430, [
+        "Stage 1: ESP32-S3 board, USB-C cable, phone or laptop browser.",
+        "Stage 2: XL4015 buck, multimeter, jumper wires.",
+        "Stage 3: battery holder, 3 x 18650, 3S BMS, fuse holder, glass fuse, toggle switch.",
+        "Stage 4: common ground wiring, breadboard only if still prototyping.",
+        "Stage 5: left and right L298 modules plus 4 motors.",
+        "Stage 6: 3 x HC-SR04 plus 10k resistor dividers on each ECHO line.",
+        "Stage 7: capacitors, final cable cleanup, and chassis assembly."
+    ])
+
+    section_box(draw, 650, 860, 500, 610, "Quick Safety Rules")
+    bullet_list(draw, 685, 940, 430, [
+        "Do not connect raw 3S battery voltage directly to the ESP32 logic supply.",
+        "Do not use GPIO35, GPIO36, or GPIO37 on this board.",
+        "Keep the wheels lifted while you first test motor directions.",
+        "Do not trust Auto Avoid until all three sensors return believable values.",
+        "If the rover behaves strangely, return to hotspot mode and manual stop first."
+    ])
+
+    return image
+
+
+def wiring_diagram_image_page():
+    image = Image.new("RGB", (PAGE_W, PAGE_H), LIGHT)
+    draw = ImageDraw.Draw(image)
+    header(draw, "Wiring Diagram Image", "Visual map of the exact firmware pin layout for sensors, drivers, and the onboard LED")
+
+    section_box(draw, 70, 210, 1100, 980, "Wiring Diagram")
+    paste_scaled_image(image, WIRING_DIAGRAM_PATH, (100, 290, 1140, 1140))
+
+    section_box(draw, 70, 1240, 1100, 320, "What To Notice")
+    bullet_list(draw, 105, 1315, 1030, [
+        "The left and right L298 modules each get their own dedicated GPIO group.",
+        "Each HC-SR04 ECHO line must pass through a voltage divider before it reaches the ESP32-S3.",
+        "GPIO48 is reserved for the onboard RGB LED in the current firmware.",
+        "GPIO35, GPIO36, and GPIO37 stay unused because this N16R8 module needs them internally."
+    ])
+
+    return image
+
+
+def power_flow_image_page():
+    image = Image.new("RGB", (PAGE_W, PAGE_H), LIGHT)
+    draw = ImageDraw.Draw(image)
+    header(draw, "Power Flow Image", "Visual path from the 3S pack to the motor rail, 5V logic rail, ESP32, and sensors")
+
+    section_box(draw, 70, 210, 1100, 980, "Power Flow Diagram")
+    paste_scaled_image(image, POWER_FLOW_IMAGE_PATH, (100, 290, 1140, 1140))
+
+    section_box(draw, 70, 1240, 1100, 320, "What To Notice")
+    bullet_list(draw, 105, 1315, 1030, [
+        "The battery path splits after the switch into a raw motor rail and a regulated 5V logic rail.",
+        "Both L298 boards stay on the raw motor side, while the ESP32 and HC-SR04 modules use the 5V buck rail.",
+        "All grounds must join even though the positive rails split.",
+        "The second XL4015 is optional and can stay reserved for future accessories."
+    ])
+
+    return image
+
+
+def sensor_placement_image_page():
+    image = Image.new("RGB", (PAGE_W, PAGE_H), LIGHT)
+    draw = ImageDraw.Draw(image)
+    header(draw, "Sensor Placement Image", "Recommended top-view positions for the three HC-SR04 sensors on the 4WD chassis")
+
+    section_box(draw, 70, 210, 1100, 980, "Top-View Sensor Placement")
+    paste_scaled_image(image, SENSOR_PLACEMENT_IMAGE_PATH, (100, 290, 1140, 1140))
+
+    section_box(draw, 70, 1240, 1100, 320, "Placement Rules")
+    bullet_list(draw, 105, 1315, 1030, [
+        "Front sensor centered at the front edge and kept straight forward.",
+        "Left and right sensors placed slightly behind the front bumper line and angled outward about 20 to 35 degrees.",
+        "Keep the sensors level rather than tilted toward the floor or sky.",
+        "Try to mount them high enough to avoid floor reflections but low enough to see chair legs and walls clearly."
+    ])
+
+    return image
+
+
 def controls_and_troubleshooting_page():
     image = Image.new("RGB", (PAGE_W, PAGE_H), LIGHT)
     draw = ImageDraw.Draw(image)
@@ -714,6 +834,10 @@ def main():
         pinout_page(),
         wiring_reference_page(),
         power_flow_page(),
+        assembly_checklist_page(),
+        wiring_diagram_image_page(),
+        power_flow_image_page(),
+        sensor_placement_image_page(),
         controls_and_troubleshooting_page(),
     ]
     for index, page in enumerate(pages, start=1):

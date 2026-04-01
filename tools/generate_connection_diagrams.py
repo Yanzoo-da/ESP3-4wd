@@ -5,6 +5,7 @@ ROOT = Path(__file__).resolve().parents[1]
 DOCS = ROOT / "docs"
 WIRING_OUT = DOCS / "esp32-rover-wiring-diagram.png"
 POWER_OUT = DOCS / "esp32-rover-power-flow-diagram.png"
+SENSOR_OUT = DOCS / "esp32-rover-sensor-placement.png"
 
 W = 1800
 H = 1200
@@ -269,12 +270,88 @@ def power_diagram():
     image.save(POWER_OUT)
 
 
+def sensor_placement_diagram():
+    image = Image.new("RGB", (W, H), BG)
+    draw = ImageDraw.Draw(image)
+    title_block(draw, "3-Sensor Placement On The 4WD Rover", "Recommended top-view mounting positions for front, left, and right HC-SR04 modules")
+
+    # Chassis
+    rounded(draw, (320, 190, 1480, 980), fill=(227, 37, 45), outline=(120, 20, 24), width=8, radius=48)
+    rounded(draw, (430, 290, 1370, 880), fill=(255, 250, 250), outline=(160, 40, 44), width=4, radius=30)
+    draw.text((850, 210), "Front", font=SUB, fill=WHITE)
+    arrow(draw, (920, 250), (920, 180), fill=WHITE, width=7)
+
+    # Wheels
+    for box in [
+        (230, 270, 360, 470),
+        (230, 700, 360, 900),
+        (1440, 270, 1570, 470),
+        (1440, 700, 1570, 900),
+    ]:
+        rounded(draw, box, fill=(58, 60, 66), outline=(20, 20, 22), width=4, radius=34)
+
+    # ESP and drivers
+    node(draw, (650, 520, 840, 675), "ESP32-S3", [
+        "controller board",
+        "center area",
+    ], fill=(232, 240, 255), accent=BLUE)
+    node(draw, (520, 710, 760, 860), "Left L298", [
+        "keep near left motors",
+    ], fill=(255, 238, 233), accent=RED)
+    node(draw, (930, 710, 1170, 860), "Right L298", [
+        "keep near right motors",
+    ], fill=(255, 238, 233), accent=RED)
+
+    # Sensors
+    node(draw, (760, 95, 1080, 215), "Front Sensor", [
+        "HC-SR04",
+        "centered at the front edge",
+    ], fill=(247, 245, 232), accent=ORANGE)
+    arrow(draw, (920, 215), (920, 290), fill=ORANGE, width=8)
+
+    node(draw, (100, 470, 360, 620), "Left Sensor", [
+        "HC-SR04",
+        "front-left side",
+        "angled outward 20 to 35 deg",
+    ], fill=(247, 245, 232), accent=GREEN)
+    arrow(draw, (360, 540), (430, 520), fill=GREEN, width=8)
+
+    node(draw, (1440, 470, 1700, 620), "Right Sensor", [
+        "HC-SR04",
+        "front-right side",
+        "angled outward 20 to 35 deg",
+    ], fill=(247, 245, 232), accent=GREEN)
+    arrow(draw, (1440, 540), (1370, 520), fill=GREEN, width=8)
+
+    # Angle guides
+    draw.line((470, 500, 610, 430), fill=GREEN, width=6)
+    draw.line((1330, 500, 1190, 430), fill=GREEN, width=6)
+    draw.arc((380, 420, 560, 610), start=280, end=332, fill=GREEN, width=4)
+    draw.arc((1280, 420, 1460, 610), start=208, end=260, fill=GREEN, width=4)
+    draw.text((520, 405), "20-35 deg", font=SMALL, fill=GREEN)
+    draw.text((1190, 405), "20-35 deg", font=SMALL, fill=GREEN)
+
+    # Notes
+    rounded(draw, (100, 1010, 760, 1140), fill=(255, 245, 225), outline=ORANGE, width=3, radius=24)
+    draw.text((125, 1040), "Placement rule 1", font=SUB, fill=ORANGE)
+    draw.text((125, 1082), "Mount the front sensor centered and facing straight ahead.", font=TEXT, fill=DARK)
+
+    rounded(draw, (800, 1010, 1700, 1140), fill=(236, 246, 240), outline=GREEN, width=3, radius=24)
+    draw.text((825, 1040), "Placement rule 2", font=SUB, fill=GREEN)
+    draw.text((825, 1082), "Mount left/right sensors slightly behind the front bumper, angled outward.", font=TEXT, fill=DARK)
+
+    draw.text((58, H - 48), "Use this as the mechanical placement reference for the 3 HC-SR04 sensors.", font=SMALL, fill=MID)
+    image.save(SENSOR_OUT)
+
+
 def main():
     DOCS.mkdir(parents=True, exist_ok=True)
     wiring_diagram()
     power_diagram()
+    sensor_placement_diagram()
     print(f"Created {WIRING_OUT}")
     print(f"Created {POWER_OUT}")
+    print(f"Created {SENSOR_OUT}")
 
 
 if __name__ == "__main__":

@@ -6,7 +6,9 @@ This file is the project reference wiring map that matches the current rover fir
 
 - Wiring diagram image: [esp32-rover-wiring-diagram.png](./esp32-rover-wiring-diagram.png)
 - Power flow image: [esp32-rover-power-flow-diagram.png](./esp32-rover-power-flow-diagram.png)
+- Sensor placement image: [esp32-rover-sensor-placement.png](./esp32-rover-sensor-placement.png)
 - Step-by-step connection guide: [parts-connection-guide.md](./parts-connection-guide.md)
+- Assembly order checklist: [assembly-order-checklist.md](./assembly-order-checklist.md)
 
 ## Current Firmware Pin Map
 

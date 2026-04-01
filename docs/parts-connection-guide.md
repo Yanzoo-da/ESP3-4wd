@@ -6,7 +6,36 @@ This guide is the practical, step-by-step version of the rover wiring plan. It t
 
 - Wiring diagram: [esp32-rover-wiring-diagram.png](./esp32-rover-wiring-diagram.png)
 - Power flow diagram: [esp32-rover-power-flow-diagram.png](./esp32-rover-power-flow-diagram.png)
+- Sensor placement diagram: [esp32-rover-sensor-placement.png](./esp32-rover-sensor-placement.png)
 - Pin map and text reference: [wiring-reference.md](./wiring-reference.md)
+- Assembly checklist: [assembly-order-checklist.md](./assembly-order-checklist.md)
+
+## Recommended Sensor Placement
+
+Use the image above as the top-view reference.
+
+- `Front sensor`:
+  - mount it centered on the front edge of the chassis
+  - keep it facing straight forward
+  - this is the main obstacle-stop sensor
+
+- `Left sensor`:
+  - mount it near the front-left side of the chassis
+  - place it slightly behind the front bumper line
+  - angle it outward about `20 to 35 deg`
+  - this helps it see the open left side during turns
+
+- `Right sensor`:
+  - mount it near the front-right side of the chassis
+  - place it slightly behind the front bumper line
+  - angle it outward about `20 to 35 deg`
+  - this helps it see the open right side during turns
+
+Why this placement works with the current firmware:
+
+- the `front sensor` decides when an obstacle is too close
+- the `left and right sensors` help the rover choose which direction has more open space
+- placing the side sensors outward gives better turn-choice data than pointing all 3 sensors straight forward
 
 ## Before You Start
 
