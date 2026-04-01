@@ -32,8 +32,10 @@ constexpr uint8_t FRONT_RIGHT_EN_PIN = 16;
 constexpr uint8_t FRONT_RIGHT_IN1_PIN = 17;
 constexpr uint8_t FRONT_RIGHT_IN2_PIN = 18;
 constexpr uint8_t REAR_RIGHT_EN_PIN = 21;
-constexpr uint8_t REAR_RIGHT_IN1_PIN = 35;
-constexpr uint8_t REAR_RIGHT_IN2_PIN = 36;
+// On ESP32-S3 N16R8 boards, GPIO35/36/37 are used internally by flash/PSRAM.
+// Keep motor control off those pins or the board can become unstable during boot.
+constexpr uint8_t REAR_RIGHT_IN1_PIN = 38;
+constexpr uint8_t REAR_RIGHT_IN2_PIN = 39;
 
 constexpr uint8_t FRONT_LEFT_PWM_CHANNEL = 0;
 constexpr uint8_t REAR_LEFT_PWM_CHANNEL = 1;
@@ -57,6 +59,8 @@ constexpr uint16_t DEFAULT_MQTT_TLS_PORT = 8883;
 constexpr uint16_t DEFAULT_MQTT_WS_PORT = 8884;
 constexpr uint16_t MQTT_PACKET_BUFFER_SIZE = 1536;
 constexpr int OBSTACLE_STOP_CM = 28;
+constexpr int SENSOR_VALID_MIN_CM = 2;
+constexpr int SENSOR_VALID_MAX_CM = 400;
 constexpr unsigned long SONAR_TIMEOUT_US = 25000;
 
 const char* AP_SSID = "ESP32-ROVER";
@@ -333,6 +337,10 @@ String getDefaultMqttBaseTopic() {
   return "rover/" + getDeviceSuffix();
 }
 
+String readStoredString(const char* key, const String& defaultValue = "") {
+  return preferences.isKey(key) ? preferences.getString(key, defaultValue) : defaultValue;
+}
+
 bool isMqttConfigured() {
   return mqttConfig.enabled &&
          mqttConfig.host.length() > 0 &&
@@ -350,13 +358,13 @@ String mqttTopic(const String& leaf) {
 
 void loadMqttConfig() {
   mqttConfig.enabled = preferences.getBool(PREFS_MQTT_ENABLED_KEY, false);
-  mqttConfig.host = preferences.getString(PREFS_MQTT_HOST_KEY, "");
+  mqttConfig.host = readStoredString(PREFS_MQTT_HOST_KEY, "");
   mqttConfig.port = static_cast<uint16_t>(preferences.getUInt(PREFS_MQTT_PORT_KEY, DEFAULT_MQTT_TLS_PORT));
-  mqttConfig.username = preferences.getString(PREFS_MQTT_USER_KEY, "");
-  mqttConfig.password = preferences.getString(PREFS_MQTT_PASSWORD_KEY, "");
-  mqttConfig.baseTopic = trimSlashes(preferences.getString(PREFS_MQTT_TOPIC_KEY, getDefaultMqttBaseTopic()));
+  mqttConfig.username = readStoredString(PREFS_MQTT_USER_KEY, "");
+  mqttConfig.password = readStoredString(PREFS_MQTT_PASSWORD_KEY, "");
+  mqttConfig.baseTopic = trimSlashes(readStoredString(PREFS_MQTT_TOPIC_KEY, getDefaultMqttBaseTopic()));
   mqttConfig.wsPort = static_cast<uint16_t>(preferences.getUInt(PREFS_MQTT_WS_PORT_KEY, DEFAULT_MQTT_WS_PORT));
-  mqttConfig.wsPath = preferences.getString(PREFS_MQTT_WS_PATH_KEY, DEFAULT_MQTT_WS_PATH);
+  mqttConfig.wsPath = readStoredString(PREFS_MQTT_WS_PATH_KEY, DEFAULT_MQTT_WS_PATH);
 
   if (mqttConfig.wsPath.length() == 0 || mqttConfig.wsPath.charAt(0) != '/') {
     mqttConfig.wsPath = "/" + trimSlashes(mqttConfig.wsPath);
@@ -408,11 +416,11 @@ String mqttConnectionLabel() {
 }
 
 String getSavedSsid() {
-  return preferences.getString(PREFS_SSID_KEY, "");
+  return readStoredString(PREFS_SSID_KEY, "");
 }
 
 String getSavedPassword() {
-  return preferences.getString(PREFS_PASSWORD_KEY, "");
+  return readStoredString(PREFS_PASSWORD_KEY, "");
 }
 
 bool hasSavedCredentials() {
@@ -477,6 +485,16 @@ String getCurrentSsidLabel() {
 
 bool isVehicleMoving() {
   return currentDriveCommand != DriveCommand::Stop;
+}
+
+bool isValidDistanceReading(int distanceCm) {
+  return distanceCm >= SENSOR_VALID_MIN_CM && distanceCm <= SENSOR_VALID_MAX_CM;
+}
+
+bool hasValidSensorData() {
+  return isValidDistanceReading(frontSensor.distanceCm) &&
+         isValidDistanceReading(leftSensor.distanceCm) &&
+         isValidDistanceReading(rightSensor.distanceCm);
 }
 
 String colorNameFromRgb(const ColorRgb& color) {
@@ -587,6 +605,8 @@ String buildStatusJson(const String& messageOverride = "") {
   json += "\"stationIp\":\"" + jsonEscape(getStaIpAddress()) + "\",";
   json += "\"apIp\":\"" + jsonEscape(getApIpAddress()) + "\",";
   json += "\"ssid\":\"" + jsonEscape(getCurrentSsidLabel()) + "\",";
+  json += "\"savedSsid\":\"" + jsonEscape(getSavedSsid()) + "\",";
+  json += "\"savedPassword\":\"" + jsonEscape(getSavedPassword()) + "\",";
   json += "\"apSsid\":\"" + jsonEscape(String(AP_SSID)) + "\",";
   json += "\"hasSavedCredentials\":";
   json += (hasSavedCredentials() ? "true" : "false");
@@ -733,11 +753,11 @@ void stopVehicle() {
 
 void setupSensors() {
   pinMode(frontSensor.trigPin, OUTPUT);
-  pinMode(frontSensor.echoPin, INPUT);
+  pinMode(frontSensor.echoPin, INPUT_PULLDOWN);
   pinMode(leftSensor.trigPin, OUTPUT);
-  pinMode(leftSensor.echoPin, INPUT);
+  pinMode(leftSensor.echoPin, INPUT_PULLDOWN);
   pinMode(rightSensor.trigPin, OUTPUT);
-  pinMode(rightSensor.echoPin, INPUT);
+  pinMode(rightSensor.echoPin, INPUT_PULLDOWN);
   digitalWrite(frontSensor.trigPin, LOW);
   digitalWrite(leftSensor.trigPin, LOW);
   digitalWrite(rightSensor.trigPin, LOW);
@@ -776,6 +796,14 @@ void resetAutoStage() {
 
 void updateAutonomousMode() {
   if (controlMode != ControlMode::Autonomous) {
+    return;
+  }
+
+  if (!hasValidSensorData()) {
+    controlMode = ControlMode::Manual;
+    resetAutoStage();
+    stopVehicle();
+    setConnectionMessage("Auto mode stopped because ultrasonic sensor data is not valid.");
     return;
   }
 
@@ -834,13 +862,13 @@ void updateLedState() {
     return;
   }
 
-  if (ledBehavior == LedBehavior::PoliceMove && isVehicleMoving()) {
-    if (millis() - lastLedAnimationAt >= POLICE_LIGHT_INTERVAL_MS) {
+  if (ledBehavior == LedBehavior::PoliceMove) {
+    if (isVehicleMoving() && millis() - lastLedAnimationAt >= POLICE_LIGHT_INTERVAL_MS) {
       lastLedAnimationAt = millis();
       policeSequenceIndex = (policeSequenceIndex + 1) %
                             (sizeof(POLICE_SEQUENCE) / sizeof(POLICE_SEQUENCE[0]));
-      setColor(POLICE_SEQUENCE[policeSequenceIndex]);
     }
+    setColor(POLICE_SEQUENCE[policeSequenceIndex]);
     return;
   }
 
@@ -873,6 +901,9 @@ bool setColorFromHex(const String& hex) {
     static_cast<uint8_t>(value & 0xFF)
   };
   ledBehavior = LedBehavior::StaticColor;
+  if (controlMode != ControlMode::Autonomous) {
+    setColor(selectedStaticColor);
+  }
   return true;
 }
 
@@ -881,6 +912,9 @@ bool setNamedColor(const String& color) {
   selectedStaticColor = colorFromName(color, found);
   if (found) {
     ledBehavior = LedBehavior::StaticColor;
+    if (controlMode != ControlMode::Autonomous) {
+      setColor(selectedStaticColor);
+    }
   }
   return found;
 }
@@ -911,6 +945,15 @@ bool applyModeRequest(const String& mode, int requestedSpeed, const String& sour
   }
 
   if (mode == "auto") {
+    if (!hasValidSensorData()) {
+      controlMode = ControlMode::Manual;
+      resetAutoStage();
+      stopVehicle();
+      responseMessage = "Auto mode is blocked until all three ultrasonic sensors return valid data.";
+      setConnectionMessage(responseMessage);
+      return false;
+    }
+
     autoSpeed = static_cast<uint8_t>(clampInt(requestedSpeed, 90, 255));
     turnSpeed = static_cast<uint8_t>(clampInt(autoSpeed + 20, 120, 255));
     controlMode = ControlMode::Autonomous;
@@ -938,6 +981,11 @@ bool applyLedColorRequest(const String& color, const String& sourceLabel, String
 bool applyLedBehaviorRequest(const String& mode, const String& sourceLabel, String& responseMessage) {
   if (mode == "police") {
     ledBehavior = LedBehavior::PoliceMove;
+    policeSequenceIndex = 0;
+    lastLedAnimationAt = millis();
+    if (controlMode != ControlMode::Autonomous) {
+      setColor(POLICE_SEQUENCE[policeSequenceIndex]);
+    }
     responseMessage = sourceLabel + " police moving lights enabled.";
     setConnectionMessage(responseMessage);
     return true;
@@ -945,6 +993,9 @@ bool applyLedBehaviorRequest(const String& mode, const String& sourceLabel, Stri
 
   if (mode == "static") {
     ledBehavior = LedBehavior::StaticColor;
+    if (controlMode != ControlMode::Autonomous) {
+      setColor(selectedStaticColor);
+    }
     responseMessage = sourceLabel + " static LED mode enabled.";
     setConnectionMessage(responseMessage);
     return true;
@@ -1271,6 +1322,10 @@ const char* webpage = R"rawliteral(
     .dpadBtn.stop{background:radial-gradient(circle at 50% 38%,#ffd0d8 0,#ff7c8d 24%,#ff4f63 42%,#b91832 100%);border-radius:50%;font-size:32px;text-shadow:none;box-shadow:0 0 0 6px rgba(255,255,255,.04),0 0 18px rgba(255,95,130,.35),inset 0 8px 14px rgba(255,255,255,.16),0 14px 24px rgba(255,68,57,.28)}
     .dpadBtn:hover{box-shadow:inset 0 12px 18px rgba(255,255,255,.12),inset 0 -12px 18px rgba(0,0,0,.45),0 12px 20px rgba(0,0,0,.34),0 0 24px rgba(95,212,255,.18)}
     .dpadBtn:active{transform:translateY(1px);box-shadow:inset 0 6px 14px rgba(0,0,0,.32),0 6px 12px rgba(0,0,0,.22),0 0 12px rgba(95,212,255,.12)}
+    .dpadBtn.gray{background:linear-gradient(180deg,#242a31 0,#15191f 52%,#090b0e 100%);color:#afbcc8;opacity:.62;box-shadow:inset 0 8px 14px rgba(255,255,255,.06),inset 0 -10px 16px rgba(0,0,0,.48),0 8px 16px rgba(0,0,0,.22)}
+    .dpadBtn.active{background:linear-gradient(180deg,#7fe3ff 0,#3fb7ff 28%,#1e79e8 68%,#0d2b7f 100%);color:#f6fdff;box-shadow:0 0 0 2px rgba(142,231,255,.2),0 0 22px rgba(92,204,255,.34),inset 0 12px 18px rgba(255,255,255,.2),0 16px 28px rgba(0,0,0,.36)}
+    .dpadBtn.stop.gray{opacity:.72}
+    .dpadBtn.stop.active{box-shadow:0 0 0 2px rgba(255,255,255,.12),0 0 24px rgba(255,95,130,.42),inset 0 8px 14px rgba(255,255,255,.16),0 14px 24px rgba(255,68,57,.32)}
     .split{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}
     .checkRow{display:flex;align-items:center;gap:10px}
     .checkRow input{width:auto}
@@ -1359,9 +1414,9 @@ const char* webpage = R"rawliteral(
   <section>
     <h2>Auto Drive</h2>
     <div class=row>
-      <button type=button onclick="startAuto()">Start Auto Avoid</button>
-      <button type=button class=gray onclick="mode('manual')">Manual Mode</button>
-      <button type=button class=gray onclick="stopAuto()">Stop Auto</button>
+      <button id=autoModeBtn type=button onclick="startAuto()">Start Auto Avoid</button>
+      <button id=manualModeBtn type=button class=gray onclick="mode('manual')">Manual Mode</button>
+      <button id=stopAutoBtn type=button class=gray onclick="stopAuto()">Stop Auto</button>
     </div>
     <small>Auto mode uses the three ultrasonic sensors to detect obstacles, reverse, and turn away before impact. While auto mode is active, the rover LED is forced red.</small>
   </section>
@@ -1380,8 +1435,8 @@ const char* webpage = R"rawliteral(
       <button id=applyLed type=button>Apply Color</button>
     </div>
     <div class=row>
-      <button type=button onclick="ledmode('police')">Police Move</button>
-      <button type=button class=gray onclick="ledmode('static')">Static</button>
+      <button id=policeBtn type=button onclick="ledmode('police')">Police Move</button>
+      <button id=staticBtn type=button class=gray onclick="ledmode('static')">Static</button>
     </div>
     <small>The default power-on light is green. If the rover power switch is off, the LED is off because the board has no power.</small>
   </details>
@@ -1440,6 +1495,12 @@ const char* webpage = R"rawliteral(
     let joystickCommand='stop';
     let joystickSpeed=0;
     let mqttFormPrimed=false;
+    let ledSelectionDirty=false;
+    let wifiFormDirty=false;
+    let statusPauseUntil=0;
+    const commandRepeatMs=120;
+    const statusRefreshMs=1500;
+    const statusPauseMs=450;
     const mqttDefaults={
       host:'8038be31051d4e368ce62a5753aaf95d.s1.eu.hivemq.cloud',
       port:'8883',
@@ -1448,8 +1509,88 @@ const char* webpage = R"rawliteral(
       username:'Yanzoo4wd',
       topic:'rover/yanzoo-car-1'
     };
+    const driveButtons={
+      forwardLeft:'forward-left',
+      forward:'forward',
+      forwardRight:'forward-right',
+      left:'left',
+      stop:'stop',
+      right:'right',
+      reverseLeft:'reverse-left',
+      reverse:'reverse',
+      reverseRight:'reverse-right'
+    };
     const joystick=document.getElementById('joystick');
     const stick=document.getElementById('stick');
+    const ledSelect=document.getElementById('ledColor');
+    const ssidInput=document.getElementById('ssid');
+    const pwdInput=document.getElementById('pwd');
+    const driveButtonIds=Object.keys(driveButtons);
+
+    function syncModeButtons(mode){
+      const autoBtn=document.getElementById('autoModeBtn');
+      const manualBtn=document.getElementById('manualModeBtn');
+      const autoSelected=mode==='autonomous';
+      autoBtn.classList.toggle('active',autoSelected);
+      autoBtn.classList.toggle('gray',!autoSelected);
+      manualBtn.classList.toggle('active',!autoSelected);
+      manualBtn.classList.toggle('gray',autoSelected);
+    }
+
+    function syncDriveButtons(command){
+      const selected=command||'stop';
+      driveButtonIds.forEach(id=>{
+        const button=document.getElementById(id);
+        const active=driveButtons[id]===selected;
+        button.classList.toggle('active',active);
+        button.classList.toggle('gray',!active);
+      });
+    }
+
+    function syncLedButtons(behavior){
+      const policeBtn=document.getElementById('policeBtn');
+      const staticBtn=document.getElementById('staticBtn');
+      const policeSelected=behavior==='police';
+      policeBtn.classList.toggle('active',policeSelected);
+      policeBtn.classList.toggle('gray',!policeSelected);
+      staticBtn.classList.toggle('active',!policeSelected);
+      staticBtn.classList.toggle('gray',policeSelected);
+    }
+
+    function markUiBusy(duration=statusPauseMs){
+      statusPauseUntil=Date.now()+duration;
+    }
+
+    function renderStatus(d){
+      document.getElementById('modeChip').textContent=`Network: ${d.mode}`;
+      document.getElementById('mqttChip').textContent=`Cloud: ${d.mqttStatus}`;
+      document.getElementById('controlChip').textContent=`Control: ${d.controlMode}`;
+      document.getElementById('driveChip').textContent=`Drive: ${d.driveCommand}`;
+      document.getElementById('speedChip').textContent=`Manual ${d.manualSpeed} | Auto ${d.autoSpeed}`;
+      syncModeButtons(d.controlMode);
+      syncDriveButtons(d.driveCommand);
+      syncLedButtons(d.ledBehavior);
+      document.getElementById('sensorTile').textContent=`Front ${d.frontDistanceCm} cm | Left ${d.leftDistanceCm} cm | Right ${d.rightDistanceCm} cm`;
+      document.getElementById('networkTile').textContent=`Router ${d.ssid||'not set'} @ ${d.stationIp} | Hotspot ${d.apSsid} @ ${d.apIp}`;
+      document.getElementById('mqttTile').textContent=`MQTT ${d.mqttHost||'not set'}:${d.mqttPort} | Topic ${d.mqttTopic||'not set'} | ${d.mqttMessage||''}`;
+      document.getElementById('messageTile').textContent=d.message||'';
+      document.getElementById('remoteTile').textContent=d.remoteHint||'';
+      if(d.selectedColor && !ledSelectionDirty && document.activeElement!==ledSelect) ledSelect.value=d.selectedColor;
+      if(!wifiFormDirty && document.activeElement!==ssidInput && document.activeElement!==pwdInput){
+        ssidInput.value=d.savedSsid||d.ssid||'';
+        pwdInput.value=d.savedPassword||'';
+      }
+      if(!mqttFormPrimed){
+        document.getElementById('mqttEnabled').checked=!!d.mqttEnabled;
+        document.getElementById('mqttHost').value=d.mqttHost||mqttDefaults.host;
+        document.getElementById('mqttPort').value=d.mqttPort||mqttDefaults.port;
+        document.getElementById('mqttWsPort').value=d.mqttWsPort||mqttDefaults.wsPort;
+        document.getElementById('mqttWsPath').value=d.mqttWsPath||mqttDefaults.wsPath;
+        document.getElementById('mqttUser').value=d.mqttUsername||mqttDefaults.username;
+        document.getElementById('mqttTopic').value=d.mqttTopic||mqttDefaults.topic;
+        mqttFormPrimed=true;
+      }
+    }
 
     function fb(message,isError){
       const el=document.getElementById('feedback');
@@ -1458,7 +1599,7 @@ const char* webpage = R"rawliteral(
     }
 
     async function json(url){
-      const response=await fetch(url);
+      const response=await fetch(url,{cache:'no-store'});
       const text=await response.text();
       let data={};
       try{
@@ -1472,36 +1613,17 @@ const char* webpage = R"rawliteral(
     }
 
     async function hit(url){
-      const response=await fetch(url);
+      const response=await fetch(url,{cache:'no-store'});
       const text=await response.text();
       if(!response.ok) throw new Error(text||'Request failed');
       return text;
     }
 
-    async function status(){
+    async function status(force){
+      if(!force && (Date.now()<statusPauseUntil || Object.keys(holds).length || joystickActive)) return;
       try{
         const d=await json('/status');
-        document.getElementById('modeChip').textContent=`Network: ${d.mode}`;
-        document.getElementById('mqttChip').textContent=`Cloud: ${d.mqttStatus}`;
-        document.getElementById('controlChip').textContent=`Control: ${d.controlMode}`;
-        document.getElementById('driveChip').textContent=`Drive: ${d.driveCommand}`;
-        document.getElementById('speedChip').textContent=`Manual ${d.manualSpeed} | Auto ${d.autoSpeed}`;
-        document.getElementById('sensorTile').textContent=`Front ${d.frontDistanceCm} cm | Left ${d.leftDistanceCm} cm | Right ${d.rightDistanceCm} cm`;
-        document.getElementById('networkTile').textContent=`Router ${d.ssid||'not set'} @ ${d.stationIp} | Hotspot ${d.apSsid} @ ${d.apIp}`;
-        document.getElementById('mqttTile').textContent=`MQTT ${d.mqttHost||'not set'}:${d.mqttPort} | Topic ${d.mqttTopic||'not set'} | ${d.mqttMessage||''}`;
-        document.getElementById('messageTile').textContent=d.message||'';
-        document.getElementById('remoteTile').textContent=d.remoteHint||'';
-        if(d.selectedColor) document.getElementById('ledColor').value=d.selectedColor;
-        if(!mqttFormPrimed){
-          document.getElementById('mqttEnabled').checked=!!d.mqttEnabled;
-          document.getElementById('mqttHost').value=d.mqttHost||mqttDefaults.host;
-          document.getElementById('mqttPort').value=d.mqttPort||mqttDefaults.port;
-          document.getElementById('mqttWsPort').value=d.mqttWsPort||mqttDefaults.wsPort;
-          document.getElementById('mqttWsPath').value=d.mqttWsPath||mqttDefaults.wsPath;
-          document.getElementById('mqttUser').value=d.mqttUsername||mqttDefaults.username;
-          document.getElementById('mqttTopic').value=d.mqttTopic||mqttDefaults.topic;
-          mqttFormPrimed=true;
-        }
+        renderStatus(d);
       }catch(error){
         fb('Status read failed',true);
       }
@@ -1509,6 +1631,11 @@ const char* webpage = R"rawliteral(
 
     async function drive(cmd,speed){
       const chosenSpeed=speed===undefined?document.getElementById('speed').value:speed;
+      markUiBusy();
+      syncModeButtons('manual');
+      syncDriveButtons(cmd);
+      document.getElementById('controlChip').textContent='Control: manual';
+      document.getElementById('driveChip').textContent=`Drive: ${cmd}`;
       try{
         await hit(`/drive?cmd=${cmd}&speed=${chosenSpeed}`);
       }catch(error){
@@ -1519,32 +1646,43 @@ const char* webpage = R"rawliteral(
 
     function bind(id,cmd){
       const button=document.getElementById(id);
-      const start=async event=>{
+      const start=event=>{
         event.preventDefault();
         if(holds[id]) return;
-        await drive(cmd);
-        holds[id]=setInterval(()=>drive(cmd).catch(()=>{}),250);
+        markUiBusy();
+        drive(cmd).catch(()=>{});
+        holds[id]=setInterval(()=>{
+          markUiBusy();
+          drive(cmd).catch(()=>{});
+        },commandRepeatMs);
       };
-      const stop=async event=>{
+      const stop=event=>{
         if(event) event.preventDefault();
         if(holds[id]){
           clearInterval(holds[id]);
           delete holds[id];
         }
-        await drive('stop',0);
+        markUiBusy();
+        drive('stop',0).catch(()=>{});
       };
       ['mousedown','touchstart'].forEach(name=>button.addEventListener(name,start,{passive:false}));
       ['mouseup','mouseleave','touchend','touchcancel'].forEach(name=>button.addEventListener(name,stop,{passive:false}));
     }
 
     async function mode(value){
+      markUiBusy();
       try{
         const url=value==='auto'
           ? `/mode?m=auto&speed=${document.getElementById('speed').value}`
           : `/mode?m=${value}`;
         const data=await json(url);
         fb(data.message,!data.ok);
-        await status();
+        if(value!=='auto'){
+          syncDriveButtons('stop');
+          document.getElementById('driveChip').textContent='Drive: stop';
+        }
+        if(typeof data.controlMode!=='undefined') renderStatus(data);
+        else await status(true);
       }catch(error){
         fb(error.message,true);
       }
@@ -1561,42 +1699,51 @@ const char* webpage = R"rawliteral(
     }
 
     async function led(value){
+      markUiBusy();
+      syncLedButtons('static');
       try{
         const data=await json(`/led?c=${value}`);
         fb(data.message,!data.ok);
-        await status();
+        ledSelectionDirty=false;
+        if(typeof data.controlMode!=='undefined') renderStatus(data);
+        else await status(true);
       }catch(error){
         fb(error.message,true);
       }
     }
 
     async function ledmode(value){
+      markUiBusy();
+      syncLedButtons(value);
       try{
         const data=await json(`/ledmode?m=${value}`);
         fb(data.message,!data.ok);
-        await status();
+        if(typeof data.controlMode!=='undefined') renderStatus(data);
+        else await status(true);
       }catch(error){
         fb(error.message,true);
       }
     }
 
     async function clearWifi(){
+      markUiBusy(900);
       try{
         const data=await json('/wifi/clear');
         fb(data.message,!data.ok);
-        await status();
+        renderStatus(data);
       }catch(error){
         fb(error.message,true);
       }
     }
 
     async function clearMqtt(){
+      markUiBusy(900);
       try{
         const data=await json('/mqtt/clear');
         fb(data.message,!data.ok);
         document.getElementById('mqttPass').value='';
         mqttFormPrimed=false;
-        await status();
+        renderStatus(data);
       }catch(error){
         fb(error.message,true);
       }
@@ -1672,9 +1819,10 @@ const char* webpage = R"rawliteral(
       if(joystickTimer) clearInterval(joystickTimer);
       joystickTimer=setInterval(()=>{
         if(joystickActive){
+          markUiBusy();
           drive(joystickCommand,joystickSpeed).catch(()=>{});
         }
-      },250);
+      },commandRepeatMs);
       updateJoystickFromPoint(event.clientX,event.clientY);
     }
 
@@ -1709,7 +1857,13 @@ const char* webpage = R"rawliteral(
     document.getElementById('showJoystick').addEventListener('click',()=>setDriveUi('joystick'));
     document.getElementById('speed').addEventListener('input',event=>document.getElementById('speedv').textContent=event.target.value);
     document.getElementById('stop').addEventListener('click',()=>drive('stop',0).catch(()=>{}));
-    document.getElementById('applyLed').addEventListener('click',()=>led(document.getElementById('ledColor').value));
+    ssidInput.addEventListener('input',()=>{wifiFormDirty=true;});
+    ssidInput.addEventListener('focus',()=>{wifiFormDirty=true;});
+    pwdInput.addEventListener('input',()=>{wifiFormDirty=true;});
+    pwdInput.addEventListener('focus',()=>{wifiFormDirty=true;});
+    ledSelect.addEventListener('change',()=>{ledSelectionDirty=true;});
+    ledSelect.addEventListener('focus',()=>{ledSelectionDirty=true;});
+    document.getElementById('applyLed').addEventListener('click',()=>led(ledSelect.value));
     document.getElementById('w').addEventListener('submit',async event=>{
       event.preventDefault();
       const ssid=document.getElementById('ssid').value.trim();
@@ -1721,8 +1875,8 @@ const char* webpage = R"rawliteral(
       try{
         const data=await json(`/wifi/save?ssid=${encodeURIComponent(ssid)}&password=${encodeURIComponent(password)}`);
         fb(data.message,!data.ok);
-        document.getElementById('pwd').value='';
-        await status();
+        wifiFormDirty=false;
+        renderStatus(data);
       }catch(error){
         fb(error.message,true);
       }
@@ -1730,6 +1884,7 @@ const char* webpage = R"rawliteral(
 
     document.getElementById('mqttForm').addEventListener('submit',async event=>{
       event.preventDefault();
+      markUiBusy(900);
       const host=document.getElementById('mqttHost').value.trim();
       if(!host){
         fb('MQTT host is required',true);
@@ -1750,7 +1905,7 @@ const char* webpage = R"rawliteral(
         fb(data.message,!data.ok);
         document.getElementById('mqttPass').value='';
         mqttFormPrimed=false;
-        await status();
+        renderStatus(data);
       }catch(error){
         fb(error.message,true);
       }
@@ -1765,9 +1920,12 @@ const char* webpage = R"rawliteral(
     bind('reverse','reverse');
     bind('reverseRight','reverse-right');
     setDriveUi('buttons');
+    syncModeButtons('manual');
+    syncDriveButtons('stop');
+    syncLedButtons('static');
     resetStick();
-    status();
-    setInterval(status,1000);
+    status(true);
+    setInterval(()=>status(false),statusRefreshMs);
   </script>
   </main>
 </body>
@@ -1830,31 +1988,31 @@ void handleMode() {
   String mode = server.arg("m");
   String responseMessage;
   if (!applyModeRequest(mode, server.arg("speed").toInt(), "HTTP", responseMessage)) {
-    sendJson(400, "{\"ok\":false,\"message\":\"" + jsonEscape(responseMessage) + "\"}");
+    sendJson(400, buildStatusJson(responseMessage));
     return;
   }
 
-  sendJson(200, "{\"ok\":true,\"message\":\"" + jsonEscape(responseMessage) + "\"}");
+  sendJson(200, buildStatusJson(responseMessage));
 }
 
 void handleLed() {
   String responseMessage;
   if (!applyLedColorRequest(server.arg("c"), "HTTP", responseMessage)) {
-    sendJson(400, "{\"ok\":false,\"message\":\"" + jsonEscape(responseMessage) + "\"}");
+    sendJson(400, buildStatusJson(responseMessage));
     return;
   }
 
-  sendJson(200, "{\"ok\":true,\"message\":\"" + jsonEscape(responseMessage) + "\"}");
+  sendJson(200, buildStatusJson(responseMessage));
 }
 
 void handleLedMode() {
   String responseMessage;
   if (!applyLedBehaviorRequest(server.arg("m"), "HTTP", responseMessage)) {
-    sendJson(400, "{\"ok\":false,\"message\":\"" + jsonEscape(responseMessage) + "\"}");
+    sendJson(400, buildStatusJson(responseMessage));
     return;
   }
 
-  sendJson(200, "{\"ok\":true,\"message\":\"" + jsonEscape(responseMessage) + "\"}");
+  sendJson(200, buildStatusJson(responseMessage));
 }
 
 void handleWifiSave() {

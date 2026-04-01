@@ -52,8 +52,24 @@ const state = {
   joystickActive: false,
   joystickTimer: null,
   joystickCommand: 'stop',
-  joystickSpeed: 0
+  joystickSpeed: 0,
+  ledSelectionDirty: false
 };
+
+const commandRepeatMs = 120;
+const driveButtons = {
+  forwardLeft: 'forward-left',
+  forward: 'forward',
+  forwardRight: 'forward-right',
+  left: 'left',
+  stop: 'stop',
+  right: 'right',
+  reverseLeft: 'reverse-left',
+  reverse: 'reverse',
+  reverseRight: 'reverse-right'
+};
+
+const driveButtonIds = Object.keys(driveButtons);
 
 function feedback(message, isError = false) {
   els.feedback.textContent = message || '';
@@ -133,24 +149,65 @@ function requestStatus() {
 
 function sendDrive(command, speed) {
   const chosenSpeed = speed === undefined ? Number(els.speed.value) : speed;
-  publish(mqttTopic('cmd/drive'), `${command}|${chosenSpeed}`);
+  if (publish(mqttTopic('cmd/drive'), `${command}|${chosenSpeed}`)) {
+    syncModeButtons('manual');
+    syncDriveButtons(command);
+    els.driveChip.textContent = `Drive: ${command}`;
+  }
 }
 
 function sendMode(mode) {
   if (mode === 'auto') {
-    publish(mqttTopic('cmd/mode'), `auto|${els.speed.value}`);
+    if (publish(mqttTopic('cmd/mode'), `auto|${els.speed.value}`)) {
+      syncModeButtons('autonomous');
+    }
     return;
   }
 
-  publish(mqttTopic('cmd/mode'), 'manual');
+  if (publish(mqttTopic('cmd/mode'), 'manual')) {
+    syncModeButtons('manual');
+    syncDriveButtons('stop');
+    els.driveChip.textContent = 'Drive: stop';
+  }
 }
 
 function sendLedColor(color) {
-  publish(mqttTopic('cmd/led/color'), color);
+  if (publish(mqttTopic('cmd/led/color'), color)) {
+    state.ledSelectionDirty = false;
+    syncLedButtons('static');
+  }
 }
 
 function sendLedBehavior(mode) {
-  publish(mqttTopic('cmd/led/behavior'), mode);
+  if (publish(mqttTopic('cmd/led/behavior'), mode)) {
+    syncLedButtons(mode);
+  }
+}
+
+function syncModeButtons(mode) {
+  const autoSelected = mode === 'autonomous';
+  els.autoBtn.classList.toggle('active', autoSelected);
+  els.autoBtn.classList.toggle('gray', !autoSelected);
+  els.manualBtn.classList.toggle('active', !autoSelected);
+  els.manualBtn.classList.toggle('gray', autoSelected);
+}
+
+function syncDriveButtons(command) {
+  const selected = command || 'stop';
+  driveButtonIds.forEach(id => {
+    const button = document.getElementById(id);
+    const active = driveButtons[id] === selected;
+    button.classList.toggle('active', active);
+    button.classList.toggle('gray', !active);
+  });
+}
+
+function syncLedButtons(behavior) {
+  const policeSelected = behavior === 'police';
+  els.policeBtn.classList.toggle('active', policeSelected);
+  els.policeBtn.classList.toggle('gray', !policeSelected);
+  els.staticBtn.classList.toggle('active', !policeSelected);
+  els.staticBtn.classList.toggle('gray', policeSelected);
 }
 
 function handleStatusMessage(message) {
@@ -169,7 +226,10 @@ function handleStatusMessage(message) {
   els.sensorTile.textContent = `Front ${data.frontDistanceCm} cm | Left ${data.leftDistanceCm} cm | Right ${data.rightDistanceCm} cm`;
   els.messageTile.textContent = data.message || '';
   els.hintTile.textContent = data.remoteHint || 'Cloud control is active through MQTT.';
-  if (data.selectedColor) {
+  syncModeButtons(data.controlMode || 'manual');
+  syncDriveButtons(data.driveCommand || 'stop');
+  syncLedButtons(data.ledBehavior || 'static');
+  if (data.selectedColor && !state.ledSelectionDirty && document.activeElement !== els.ledColor) {
     els.ledColor.value = data.selectedColor;
   }
 }
@@ -259,7 +319,7 @@ function bindHold(id, command) {
     event.preventDefault();
     if (state.holds[id]) return;
     sendDrive(command);
-    state.holds[id] = setInterval(() => sendDrive(command), 250);
+    state.holds[id] = setInterval(() => sendDrive(command), commandRepeatMs);
   };
   const stop = event => {
     if (event) event.preventDefault();
@@ -355,7 +415,7 @@ function startJoystick(event) {
     if (state.joystickActive) {
       sendDrive(state.joystickCommand, state.joystickSpeed);
     }
-  }, 250);
+  }, commandRepeatMs);
   updateJoystickFromPoint(event.clientX, event.clientY);
 }
 
@@ -400,6 +460,12 @@ function bindUi() {
   els.applyLed.addEventListener('click', () => sendLedColor(els.ledColor.value));
   els.policeBtn.addEventListener('click', () => sendLedBehavior('police'));
   els.staticBtn.addEventListener('click', () => sendLedBehavior('static'));
+  els.ledColor.addEventListener('change', () => {
+    state.ledSelectionDirty = true;
+  });
+  els.ledColor.addEventListener('focus', () => {
+    state.ledSelectionDirty = true;
+  });
 
   bindHold('forwardLeft', 'forward-left');
   bindHold('forward', 'forward');
@@ -424,5 +490,8 @@ function bindUi() {
 loadSettings();
 bindUi();
 setDriveUi('buttons');
+syncModeButtons('manual');
+syncDriveButtons('stop');
+syncLedButtons('static');
 resetStick();
 feedback('Project broker defaults are prefilled. Enter only the password, then connect.');
