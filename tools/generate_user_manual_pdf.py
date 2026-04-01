@@ -150,7 +150,8 @@ def cover_page():
     intro = (
         "This PDF explains the full workflow from zero: how to use the rover through the ESP hotspot, "
         "how to connect it to your home router, how to publish the GitHub Pages phone website, how to "
-        "create an MQTT cloud broker, and how to drive the rover while your phone and rover are on "
+        "create an MQTT cloud broker, how the current firmware pin map is wired, how power should flow "
+        "through the full rover, and how to drive the rover while your phone and rover are on "
         "different internet connections."
     )
     draw_wrapped(draw, intro, 145, 335, PAGE_W - 290, TEXT_FONT)
@@ -270,6 +271,7 @@ def wifi_setup_page():
         "Wait up to about 30 seconds while the ESP tries to join the router.",
         "If it works, the status area should show something like Network: STA+AP ready and Router YourWiFiName @ 192.168.1.23",
         "Write down that router IP because that is the address you will use when your phone is also on the same router.",
+        "After the first successful save, the local ESP page can auto-fill the stored Wi-Fi SSID and password on later visits because they are saved in the board preferences storage.",
         "If it fails, the page usually stays in AP fallback mode and the router IP remains 0.0.0.0.",
         "If wifiStatus shows WL_CONNECT_FAILED, the password is usually wrong. If it shows WL_NO_SSID_AVAIL, the SSID is wrong, hidden, or the 2.4 GHz router band is not available."
     ])
@@ -407,9 +409,10 @@ def save_mqtt_page():
         "WebSocket path: use /mqtt unless your cluster documentation says otherwise.",
         "MQTT username: enter the broker username you created.",
         "MQTT password: enter the broker password you created.",
-        "Topic base: enter the exact topic base you chose, for example rover/yanzoo-car-1.",
+        f"Topic base: use the project topic base {MQTT_TOPIC_BASE} unless you intentionally want a different one.",
         "Press Save Cloud MQTT and wait a few seconds.",
-        "If it works, the rover page should show Cloud: connected."
+        "If it works, the rover page should show Cloud: connected.",
+        "The GitHub Pages remote app now uses the same project topic base by default, so the hotspot page, router page, and cloud page can stay aligned."
     ])
 
     info_bar(draw, 120, 1450, 1000, "If Cloud stays disconnected", "Check host, ports, username, password, and topic base.")
@@ -517,6 +520,148 @@ def parts_mapping_page():
     return image
 
 
+def pinout_page():
+    image = Image.new("RGB", (PAGE_W, PAGE_H), LIGHT)
+    draw = ImageDraw.Draw(image)
+    header(draw, "Project Pinout Diagram", "Current firmware GPIO map for the ESP32-S3 N16R8 rover reference build")
+
+    section_box(draw, 80, 210, 1080, 760, "Main Pinout Diagram")
+    node(draw, (455, 420, 785, 620), "ESP32-S3\nN16R8", BLUE)
+
+    node(draw, (110, 320, 320, 410), "Front HC-SR04", GREEN)
+    draw.text((122, 423), "TRIG GPIO4 | ECHO GPIO5", font=SMALL_FONT, fill=DARK)
+    draw.text((122, 448), "ECHO via divider to 3.3V-safe input", font=SMALL_FONT, fill=MID)
+    arrow(draw, (320, 365), (455, 470))
+
+    node(draw, (110, 500, 320, 590), "Left HC-SR04", GREEN)
+    draw.text((122, 603), "TRIG GPIO6 | ECHO GPIO7", font=SMALL_FONT, fill=DARK)
+    draw.text((122, 628), "ECHO via divider to 3.3V-safe input", font=SMALL_FONT, fill=MID)
+    arrow(draw, (320, 545), (455, 520))
+
+    node(draw, (110, 680, 320, 770), "Right HC-SR04", GREEN)
+    draw.text((122, 783), "TRIG GPIO8 | ECHO GPIO9", font=SMALL_FONT, fill=DARK)
+    draw.text((122, 808), "ECHO via divider to 3.3V-safe input", font=SMALL_FONT, fill=MID)
+    arrow(draw, (320, 725), (455, 570))
+
+    node(draw, (870, 300, 1120, 430), "Left L298 Module", ORANGE)
+    draw.text((888, 448), "ENA GPIO10 | IN1 GPIO11 | IN2 GPIO12", font=SMALL_FONT, fill=DARK)
+    draw.text((888, 473), "ENB GPIO13 | IN3 GPIO14 | IN4 GPIO15", font=SMALL_FONT, fill=DARK)
+    draw.text((888, 498), "Motors: front-left + rear-left", font=SMALL_FONT, fill=MID)
+    arrow(draw, (785, 470), (870, 370))
+
+    node(draw, (870, 570, 1120, 700), "Right L298 Module", ORANGE)
+    draw.text((888, 718), "ENA GPIO16 | IN1 GPIO17 | IN2 GPIO18", font=SMALL_FONT, fill=DARK)
+    draw.text((888, 743), "ENB GPIO21 | IN3 GPIO38 | IN4 GPIO39", font=SMALL_FONT, fill=DARK)
+    draw.text((888, 768), "Motors: front-right + rear-right", font=SMALL_FONT, fill=MID)
+    arrow(draw, (785, 570), (870, 635))
+
+    info_bar(draw, 120, 1010, 1000, "Onboard RGB LED", "WS2812 / NeoPixel on GPIO48")
+    info_bar(draw, 120, 1110, 1000, "Reserved ESP32-S3 pins", "Do not use GPIO35, GPIO36, or GPIO37 on this N16R8 board.")
+
+    section_box(draw, 80, 1230, 1080, 330, "Pinout Notes")
+    bullet_list(draw, 115, 1310, 1010, [
+        "The motor GPIO map above matches the current src/main.cpp firmware and the project PDF should be kept in sync with that file.",
+        "Each HC-SR04 ECHO signal must be reduced to a 3.3V-safe level before it reaches the ESP32-S3 input pin.",
+        "The ESP32 onboard WS2812 LED is already handled by firmware and does not need separate control wiring."
+    ])
+
+    return image
+
+
+def wiring_reference_page():
+    image = Image.new("RGB", (PAGE_W, PAGE_H), LIGHT)
+    draw = ImageDraw.Draw(image)
+    header(draw, "Exact Wiring Reference", "What connects to what in the current rover firmware layout")
+
+    section_box(draw, 80, 210, 500, 620, "Left Side Drive")
+    bullet_list(draw, 115, 290, 430, [
+        "L298 module A is the left-side driver reference.",
+        "Front-left motor connects to output channel A on the left L298.",
+        "Rear-left motor connects to output channel B on the left L298.",
+        "Left L298 ENA -> GPIO10",
+        "Left L298 IN1 -> GPIO11",
+        "Left L298 IN2 -> GPIO12",
+        "Left L298 ENB -> GPIO13",
+        "Left L298 IN3 -> GPIO14",
+        "Left L298 IN4 -> GPIO15"
+    ])
+
+    section_box(draw, 660, 210, 500, 620, "Right Side Drive")
+    bullet_list(draw, 695, 290, 430, [
+        "L298 module B is the right-side driver reference.",
+        "Front-right motor connects to output channel A on the right L298.",
+        "Rear-right motor connects to output channel B on the right L298.",
+        "Right L298 ENA -> GPIO16",
+        "Right L298 IN1 -> GPIO17",
+        "Right L298 IN2 -> GPIO18",
+        "Right L298 ENB -> GPIO21",
+        "Right L298 IN3 -> GPIO38",
+        "Right L298 IN4 -> GPIO39"
+    ])
+
+    section_box(draw, 80, 900, 1080, 620, "Sensors And Support Wiring")
+    bullet_list(draw, 115, 980, 1010, [
+        "Front HC-SR04: TRIG -> GPIO4, ECHO -> GPIO5 through a voltage divider, VCC -> 5V rail, GND -> common ground.",
+        "Left HC-SR04: TRIG -> GPIO6, ECHO -> GPIO7 through a voltage divider, VCC -> 5V rail, GND -> common ground.",
+        "Right HC-SR04: TRIG -> GPIO8, ECHO -> GPIO9 through a voltage divider, VCC -> 5V rail, GND -> common ground.",
+        "Recommended ECHO divider examples: 10k from ECHO to GPIO and two 10k resistors in series from GPIO to GND, or any equivalent 5V-to-3.3V divider.",
+        "Place a 1000uF capacitor near the motor supply rail and 100nF decoupling close to logic rails where practical.",
+        "All grounds must join: battery, BMS output, buck converters, ESP32, both L298 modules, and all sensors."
+    ])
+
+    return image
+
+
+def power_flow_page():
+    image = Image.new("RGB", (PAGE_W, PAGE_H), LIGHT)
+    draw = ImageDraw.Draw(image)
+    header(draw, "Full Project Power Flow Diagram", "Reference power architecture using the parts already purchased")
+
+    section_box(draw, 70, 210, 1100, 740, "Recommended Power Flow")
+    node(draw, (90, 480, 250, 610), "3 x 18650\n3S Pack", GREEN)
+    node(draw, (300, 480, 480, 610), "3S BMS", ORANGE)
+    node(draw, (530, 480, 670, 610), "10A Fuse", RED)
+    node(draw, (720, 480, 880, 610), "Main Switch", BLUE)
+    node(draw, (930, 330, 1110, 450), "Motor Rail", ORANGE)
+    node(draw, (930, 500, 1110, 620), "5V Logic Buck\nXL4015", GREEN)
+    node(draw, (930, 670, 1110, 790), "Optional 2nd Buck\nAccessories / future loads", MID, text_fill=LIGHT)
+
+    arrow(draw, (250, 545), (300, 545))
+    arrow(draw, (480, 545), (530, 545))
+    arrow(draw, (670, 545), (720, 545))
+    draw.line((880, 545, 920, 545), fill=DARK, width=7)
+    draw.line((920, 545, 920, 390), fill=DARK, width=7)
+    draw.line((920, 545, 920, 560), fill=DARK, width=7)
+    draw.line((920, 545, 920, 730), fill=DARK, width=7)
+    arrow(draw, (920, 390), (930, 390))
+    arrow(draw, (920, 560), (930, 560))
+    arrow(draw, (920, 730), (930, 730))
+
+    draw.text((930, 460), "Direct battery path for motor supply", font=SMALL_FONT, fill=MID)
+    draw.text((930, 630), "Main regulated 5V rail", font=SMALL_FONT, fill=MID)
+
+    section_box(draw, 70, 1010, 530, 520, "What Connects To The Motor Rail")
+    bullet_list(draw, 105, 1090, 460, [
+        "Motor supply input of the left L298 module",
+        "Motor supply input of the right L298 module",
+        "Large bulk capacitor near the driver supply rail",
+        "This path carries the noisiest current and should use short, heavier wiring"
+    ])
+
+    section_box(draw, 640, 1010, 530, 520, "What Connects To The 5V Logic Rail")
+    bullet_list(draw, 675, 1090, 460, [
+        "ESP32-S3 board 5V / VBUS input or short USB power lead",
+        "All three HC-SR04 VCC pins",
+        "Optional external logic 5V input for L298 modules if your board and jumpers support it",
+        "Future light accessories or low-current logic loads"
+    ])
+
+    draw.rounded_rectangle((90, 1570, 1080, 1660), radius=18, fill=(255, 245, 225), outline=ORANGE, width=2)
+    draw.text((115, 1594), "Important: do not use AMS1117 directly from the 3S battery as the main ESP supply. Use a buck converter for the 5V rail.", font=SMALL_FONT, fill=DARK)
+
+    return image
+
+
 def controls_and_troubleshooting_page():
     image = Image.new("RGB", (PAGE_W, PAGE_H), LIGHT)
     draw = ImageDraw.Draw(image)
@@ -566,8 +711,15 @@ def main():
         remote_control_page(),
         remote_details_page(),
         parts_mapping_page(),
+        pinout_page(),
+        wiring_reference_page(),
+        power_flow_page(),
         controls_and_troubleshooting_page(),
     ]
+    for index, page in enumerate(pages, start=1):
+        draw = ImageDraw.Draw(page)
+        draw.rectangle((0, PAGE_H - 70, PAGE_W, PAGE_H), fill=LIGHT)
+        footer(draw, index)
     OUT_PATH.parent.mkdir(parents=True, exist_ok=True)
     pages[0].save(OUT_PATH, "PDF", save_all=True, append_images=pages[1:], resolution=150.0)
     print(f"Created {OUT_PATH}")

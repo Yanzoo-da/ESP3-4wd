@@ -6,3 +6,5 @@
 compile_commands.json
 *.log
 .idea/
+__pycache__/
+*.pyc

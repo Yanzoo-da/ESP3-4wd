@@ -76,3 +76,8 @@ Build a 4WD ESP32-S3 rover that can:
 ## Current Repo Boundary
 
 This repository is already suitable for publishing as the software base of the project, but it does not yet represent the finished rover. Right now it is the control-network prototype plus the project documentation needed to grow the codebase cleanly.
+
+## Reference Docs
+
+- Full user manual PDF: [ESP32-S3-4WD-Rover-User-Manual.pdf](./ESP32-S3-4WD-Rover-User-Manual.pdf)
+- Current firmware pin map and recommended power flow: [wiring-reference.md](./wiring-reference.md)
